@@ -3,7 +3,7 @@ Contributors: strangerstudios
 Tags: membership, memberships, member, members, ecommerce, e-commerce, paypal, stripe, braintree, authorize.net, payflow, restrict access, restrict content, directory
 Requires at least: 4
 Tested up to: 4.9.6
-Stable tag: 1.9.5
+Stable tag: 1.9.5.2
 
 Get Paid with Paid Memberships Pro: The most complete member management and membership subscriptions plugin for your WordPress site.
 
@@ -128,6 +128,17 @@ Not sure? You can find out by doing a bit a research.
 [View All Screenshots](http://www.paidmembershipspro.com/features/screenshots/)
 
 == Changelog ==
+
+= 1.9.5.2 - 2018-06-26 =
+* BUG FIX: Fixed compatibility with Theme My Login version 7. (Thanks, Jeff Farthing)
+* BUG FIX: Fixed missing $current_user bug in pmpro_ipnhandler_level_extend_memberships function. (Thanks, Anne)
+
+= 1.9.5.1 - 2018-06-08 =
+* BUG FIX: Fixed issue with the PayPal IPN Handler where existing users checking out for a new level would sometimes have their membership and new subscription cancelled.
+* BUG FIX: Fixed PayPal IPN Handler to set the status of old levels to 'changed' (instead of 'inactive') when processing checkouts. This will improve the accuracy of reports.
+* BUG FIX/ENHANCEMENT: Now checking for the recurring_payment_skipped transaction type in the PayPal IPN handler. When a payment is skipped and this message is sent, we will now fire off the failed payment email to the customer and admin. (Thanks, mjulian87 on GitHub)
+* ENHANCEMENT: Removed validation info from the IPN log.
+* ENHANCEMENT: Updated German (de_DE) language files.
 
 = 1.9.5 - 2018-05-24 =
 * BUG FIX: Added 'error' to the list of default order statuses.
