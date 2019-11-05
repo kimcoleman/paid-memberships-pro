@@ -33,6 +33,7 @@
 		pmpro_setOption("hideads");
 		pmpro_setOption("hideadslevels");
 		pmpro_setOption("redirecttosubscription");
+		pmpro_setOption("maxnotificationpriority");
 
 		//captcha
 		pmpro_setOption("recaptcha");
@@ -68,6 +69,7 @@
     $filterqueries = pmpro_getOption('filterqueries');
 	$showexcerpts = pmpro_getOption("showexcerpts");
 	$hideadslevels = pmpro_getOption("hideadslevels");
+	$maxnotificationpriority = pmpro_getOption("maxnotificationpriority");
 
 	if(is_multisite())
 		$redirecttosubscription = pmpro_getOption("redirecttosubscription");
@@ -237,6 +239,21 @@
 if ( pmpro_displayAds() ) {
 	//insert ad code here
 }</pre>
+				</td>
+			</tr>
+			<tr>
+			<th><?php _e( 'Notifications', 'paid-memberships-pro' ); ?></th>
+				<td>
+					<select name="maxnotificationpriority">
+						<option value="5" <?php selected( $maxnotificationpriority, 5 ); ?>>
+							<?php _e( 'Show all notifications.', 'paid-memberships-pro' ); ?>
+						</option>
+						<option value="1" <?php selected( $maxnotificationpriority, 1 ); ?>>
+							<?php _e( 'Show only security notifications.', 'paid-memberships-pro' ); ?>
+						</option>
+					</select>
+					<br />
+					<p class="description"><?php _e('Notifications are occasionally shown on the Paid Memberships Pro settings pages.', 'paid-memberships-pro' );?></p>
 				</td>
 			</tr>
 			<tr id="hideadslevels_tr" <?php if($hideads != 2) { ?>style="display: none;"<?php } ?>>
