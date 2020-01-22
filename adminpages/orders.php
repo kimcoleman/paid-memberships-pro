@@ -1337,6 +1337,9 @@ class="alternate"<?php } ?>>
 							<span class="delete">
 								<a href="javascript:pmpro_askfirst('<?php echo str_replace( "'", "\'", sprintf( __( 'Deleting orders is permanent and can affect active users. Are you sure you want to delete order %s?', 'paid-memberships-pro' ), str_replace( "'", '', $order->code ) ) ); ?>', 'admin.php?page=pmpro-orders&delete=<?php echo $order->id; ?>'); void(0);"><?php _e( 'Delete', 'paid-memberships-pro' ); ?></a>
 							</span> |
+							<span class="view">
+								<a target="_blank" title="<?php _e( 'View', 'paid-memberships-pro' ); ?>" href="<?php echo add_query_arg( 'invoice', $order->code, pmpro_url( 'invoice' ) );?>"><?php _e( 'View', 'paid-memberships-pro' ); ?></a>
+							</span> |
 							<span class="print">
 								<a target="_blank" title="<?php _e( 'Print', 'paid-memberships-pro' ); ?>" href="<?php echo add_query_arg( array( 'action' => 'pmpro_orders_print_view', 'order' => $order->id ), admin_url('admin-ajax.php' ) ); ?>"><?php _e( 'Print', 'paid-memberships-pro' ); ?></a>
 							</span> |
