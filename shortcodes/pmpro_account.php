@@ -27,8 +27,8 @@ function pmpro_shortcode_account($atts, $content=null, $code="")
 	//if a member is logged in, show them some info here (1. past invoices. 2. billing information with button to update.)
 	if(pmpro_hasMembershipLevel())
 	{
-		$ssorder = new MemberOrder();
-		$ssorder->getLastMemberOrder();
+		$last_order = new MemberOrder();
+		$last_order->getLastMemberOrder();
 		$mylevels = pmpro_getMembershipLevelsForUser();
 		$pmpro_levels = pmpro_getAllLevels(false, true); // just to be sure - include only the ones that allow signups
 		$invoices = $wpdb->get_results("SELECT *, UNIX_TIMESTAMP(timestamp) as timestamp FROM $wpdb->pmpro_membership_orders WHERE user_id = '$current_user->ID' AND status NOT IN('review', 'token', 'error') ORDER BY timestamp DESC LIMIT 6");
@@ -60,7 +60,7 @@ function pmpro_shortcode_account($atts, $content=null, $code="")
 										<a id="pmpro_actionlink-renew" href="<?php echo pmpro_url("checkout", "?level=" . $level->id, "https")?>"><?php _e("Renew", 'paid-memberships-pro' );?></a>
 									<?php } ?>
 
-									<?php if((isset($ssorder->status) && $ssorder->status == "success") && (isset($ssorder->gateway) && in_array($ssorder->gateway, array("authorizenet", "paypal", "stripe", "braintree", "payflow", "cybersource"))) && pmpro_isLevelRecurring($level)) { ?>
+									<?php if((isset($last_order->status) && $last_order->status == "success") && (isset($last_order->gateway) && in_array($last_order->gateway, array("authorizenet", "paypal", "stripe", "braintree", "payflow", "cybersource"))) && pmpro_isLevelRecurring($level)) { ?>
 										<a id="pmpro_actionlink-update-billing" href="<?php echo pmpro_url("billing", "", "https")?>"><?php _e("Update Billing Info", 'paid-memberships-pro' ); ?></a>
 									<?php } ?>
 									
