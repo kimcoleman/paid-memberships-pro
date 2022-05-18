@@ -735,8 +735,39 @@
 	<?php } else { ?>
 		<hr class="wp-header-end">
 		<h1 class="wp-heading-inline"><?php esc_html_e( 'Memberships Discount Codes', 'paid-memberships-pro' ); ?></h1>
-		<a href="admin.php?page=pmpro-discountcodes&edit=-1" class="page-title-action"><?php esc_html_e( 'Add New Discount Code', 'paid-memberships-pro' ); ?></a>
 		<?php
+			// Build the page action links to return.
+			$pmpro_discount_codes_page_action_links = array();
+
+			// Add New Discount Code link
+			$pmpro_discount_codes_page_action_links['add-new'] = array(
+				'url' => add_query_arg( array( 'page' => 'pmpro-discountcodes', 'edit' => -1 ), admin_url( 'admin.php' ) ),
+				'name' => esc_html__( 'Add New Discount Code', 'paid-memberships-pro' ),
+				'icon' => 'plus',
+			);
+
+			/**
+			 * Filter the Discount Codes page title action links.
+			 *
+			 * @param array $pmpro_discount_codes_page_action_links Page action links.
+			 * @return array $pmpro_discount_codes_page_action_links Page action links.
+			 */
+			$pmpro_discount_codes_page_action_links = apply_filters( 'pmpro_discount_codes_page_action_links', $pmpro_discount_codes_page_action_links );
+
+			// Display the links.
+			foreach ( $pmpro_discount_codes_page_action_links as $pmpro_discount_codes_page_action_link ) {
+				// Build the selectors for the checkbox list based on number of levels.
+				$classes = array();
+				$classes[] = 'page-title-action';
+				if ( ! empty( $pmpro_discount_codes_page_action_link['icon'] ) ) {
+					$classes[] = 'pmpro-has-icon';
+					$classes[] = 'pmpro-has-icon-' . esc_attr( $pmpro_discount_codes_page_action_link['icon'] );
+				}
+				$class = implode( ' ', array_unique( $classes ) ); ?>
+				<a class="<?php echo esc_attr( $class ); ?>"href="<?php echo esc_url( $pmpro_discount_codes_page_action_link['url'] ); ?>"><?php echo esc_html( $pmpro_discount_codes_page_action_link['name'] ); ?></a>
+				<?php
+			}
+
 			$sqlQuery = "SELECT SQL_CALC_FOUND_ROWS *, UNIX_TIMESTAMP(CONVERT_TZ(starts, '+00:00', @@global.time_zone)) as starts, UNIX_TIMESTAMP(CONVERT_TZ(expires, '+00:00', @@global.time_zone)) as expires FROM $wpdb->pmpro_discount_codes ";
 			if( ! empty( $s ) ) {
 				$sqlQuery .= "WHERE code LIKE '%$s%' ";
