@@ -16,9 +16,6 @@
 	global $logstr;
 	$logstr = "";
 
-	// Sets the PMPRO_DOING_WEBHOOK constant and fires the pmpro_doing_webhook action.
-	pmpro_doing_webhook( 'stripe', true );
-
 	//you can define a different # of seconds (define PMPRO_STRIPE_WEBHOOK_DELAY in your wp-config.php) if you need this webhook to delay more or less
 	if(!defined('PMPRO_STRIPE_WEBHOOK_DELAY'))
 		define('PMPRO_STRIPE_WEBHOOK_DELAY', 2);
@@ -33,6 +30,9 @@
 	if(!class_exists("Stripe\Stripe")) {
 		require_once( PMPRO_DIR . "/includes/lib/Stripe/init.php" );
 	}
+
+	// Sets the PMPRO_DOING_WEBHOOK constant and fires the pmpro_doing_webhook action.
+	pmpro_doing_webhook( 'stripe', true );
 
 	// retrieve the request's body and parse it as JSON
 	if(empty($_REQUEST['event_id']))
@@ -687,62 +687,69 @@
 	}
 
 	// TODO Test this
-    // TODO docblock
-	function getOldOrderFromInvoiceEvent($pmpro_stripe_event)
-	{
-		//pause here to give PMPro a chance to finish checkout
-		sleep(PMPRO_STRIPE_WEBHOOK_DELAY);
+   	/**
+		* Get the Member's Order from a Stripe Event.
+		*
+		* @param Object $pmpro_stripe_event The Stripe Event object sent via webhook.
+		* @return PMPro_MemberOrder|bool Returns either the member order object linked to the Stripe Event data or false if no order is found.
+		*/
+	function getOldOrderFromInvoiceEvent( $pmpro_stripe_event ) {	
+		// Pause here to give PMPro a chance to finish checkout.
+		sleep( PMPRO_STRIPE_WEBHOOK_DELAY );
 
 		global $wpdb;
 
+		// Check if the Stripe event has a subscription ID available. (Most likely an older API version).
 		if ( ! empty( $pmpro_stripe_event->data->object->subscription ) ) {
             $subscription_id = $pmpro_stripe_event->data->object->subscription;
-        } else {
-            $subscription_id = $pmpro_stripe_event->data->object->id;
-        }
+		}
 
-		// Try to get the order ID from the subscription ID in the event.
-		$old_order_id = $wpdb->get_var(
-			$wpdb->prepare(
-				"
-					SELECT id
-					FROM $wpdb->pmpro_membership_orders
-					WHERE
-						subscription_transaction_id = %s
-						AND gateway = 'stripe'
-					ORDER BY timestamp DESC
-					LIMIT 1
-				",
-				$subscription_id
-			)
-		);
-
-		if(empty($old_order_id)){
+		// Try to get the subscription ID from the order ID.
+		if ( empty( $subscription_id ) ) {
 			// Try to get the order ID from the invoice ID in the event.
 			$invoice_id = $pmpro_stripe_event->data->object->invoice;
 
 			try {
-
 				$invoice = Stripe_Invoice::retrieve( $invoice_id );
-
-			} catch (Exception $e) {
-				error_log("Unable to fetch Stripe Invoice object: " . $e->getMessage());
+			} catch ( Exception $e ) {
+				error_log( 'Unable to fetch Stripe Invoice object: ' . $e->getMessage() );
 				$invoice = null;
 			}
 
-			if (isset( $invoice->subscription )) {
+			if ( isset( $invoice->subscription ) ) { 
 				$subscription_id = $invoice->subscription;
-				$old_order_id    = $wpdb->get_var( "SELECT id FROM $wpdb->pmpro_membership_orders WHERE (subscription_transaction_id = '" . $subscription_id . "' OR subscription_transaction_id = '"  . esc_sql($subscription_id) . "') AND gateway = 'stripe' ORDER BY timestamp DESC LIMIT 1" );
+			} else {
+				// Fall back to the Stripe event ID as a last resort.
+				$subscription_id = $pmpro_stripe_event->data->object->id;
 			}
+			
+			// Try to get the order ID from the subscription ID if we have one.			
+			if ( ! empty( $subscription_id ) ) {				
+				$old_order_id = $wpdb->get_var(
+					$wpdb->prepare(
+						"
+							SELECT id
+							FROM $wpdb->pmpro_membership_orders
+							WHERE
+								subscription_transaction_id = %s
+								AND gateway = 'stripe'
+							ORDER BY timestamp DESC
+							LIMIT 1
+						",
+						$subscription_id
+					)
+				);
+			}			
 		}
 
 		// If we have an ID, get the associated MemberOrder.
-		if (!empty($old_order_id)) {
+		if ( ! empty( $old_order_id ) ) {
 
 			$old_order = new MemberOrder( $old_order_id );
 
-			if(isset($old_order->id) && ! empty($old_order->id))
+			if ( isset( $old_order->id ) && ! empty( $old_order->id ) ) {
 				return $old_order;
+			}	
 		}
 
 		return false;
@@ -973,7 +980,7 @@ function pmpro_stripe_webhook_populate_order_from_payment( $order, $payment_meth
 	}
 
 	// Add billing address information.
-	$morder->billing = new stdClass();
+	$order->billing = new stdClass();
 	$order->billing->name = empty( $payment_method->billing_details->name ) ? '' : $payment_method->billing_details->name;
 	$order->billing->street = empty( $payment_method->billing_details->address->line1 ) ? '' : $payment_method->billing_details->address->line1;
 	$order->billing->city = empty( $payment_method->billing_details->address->city ) ? '' : $payment_method->billing_details->address->city;
