@@ -764,7 +764,7 @@
 					$classes[] = 'pmpro-has-icon-' . esc_attr( $pmpro_discount_codes_page_action_link['icon'] );
 				}
 				$class = implode( ' ', array_unique( $classes ) ); ?>
-				<a class="<?php echo esc_attr( $class ); ?>"href="<?php echo esc_url( $pmpro_discount_codes_page_action_link['url'] ); ?>"><?php echo esc_html( $pmpro_discount_codes_page_action_link['name'] ); ?></a>
+				<a class="<?php echo esc_attr( $class ); ?>" href="<?php echo esc_url( $pmpro_discount_codes_page_action_link['url'] ); ?>"><?php echo esc_html( $pmpro_discount_codes_page_action_link['name'] ); ?></a>
 				<?php
 			}
 

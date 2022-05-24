@@ -435,23 +435,80 @@ if ( function_exists( 'pmpro_add_email_order_modal' ) ) {
 			'pmpro_orders_nonce'
 		);
 		?>
-    <h1 class="wp-heading-inline"><?php esc_html_e( 'Edit Order', 'paid-memberships-pro' ); ?> ID: <?php echo esc_html( $order->id ); ?></h1>
-		<a title="<?php esc_attr_e( 'Print', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( add_query_arg( array( 'action' => 'pmpro_orders_print_view', 'order' => $order->id ), admin_url( 'admin-ajax.php' ) ) ); ?>" target="_blank" class="page-title-action pmpro-has-icon pmpro-has-icon-printer"><?php esc_html_e( 'Print', 'paid-memberships-pro' ); ?></a>
-		<a title="<?php esc_attr_e( 'Email', 'paid-memberships-pro' ); ?>" href="#TB_inline?width=600&height=200&inlineId=email_invoice" class="thickbox email_link page-title-action pmpro-has-icon pmpro-has-icon-email" data-order="<?php echo esc_html( $order->id ); ?>"><?php esc_html_e( 'Email', 'paid-memberships-pro' ); ?></a>
-		<a title="<?php esc_attr_e( 'View', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( pmpro_url("invoice", "?invoice=" . $order->code ) ) ?>" target="_blank" class="page-title-action pmpro-has-icon pmpro-has-icon-admin-users"><?php esc_html_e( 'View', 'paid-memberships-pro' ); ?></a>
-		<?php
-			if( pmpro_allowed_refunds( $order ) ) {
-				printf(
-					'<a title="%1$s" href="%2$s" class="page-title-action pmpro-has-icon pmpro-has-icon-image-rotate">%3$s</a>',
-					esc_attr__( 'Refund', 'paid-memberships-pro' ),
-					esc_js( 'javascript:pmpro_askfirst(' . wp_json_encode( $refund_text ) . ', ' . wp_json_encode( $refund_nonce_url ) . '); void(0);' ),
-					esc_html__( 'Refund', 'paid-memberships-pro' )
-				);
-			}
-		?>
 	<hr class="wp-header-end">	
-	<?php } else { ?>
+    <h1 class="wp-heading-inline"><?php esc_html_e( 'Edit Order', 'paid-memberships-pro' ); ?> ID: <?php echo esc_html( $order->id ); ?></h1>
+	<?php
+		// Build the page action links to return.
+		$pmpro_orders_edit_page_action_links = array();
+
+		// Print Order link
+		$pmpro_orders_edit_page_action_links['print'] = array(
+			'url' => add_query_arg( array( 'action' => 'pmpro_orders_print_view', 'order' => $order->id ), admin_url( 'admin-ajax.php' ) ),
+			'name' => __( 'Print', 'paid-memberships-pro' ),
+			'icon' => 'printer',
+		);
+
+		// Email Order link
+		$pmpro_orders_edit_page_action_links['email'] = array(
+			'url' => '#TB_inline?width=600&height=200&inlineId=email_invoice',
+			'name' => __( 'Email', 'paid-memberships-pro' ),
+			'icon' => 'email',
+			'classes' => 'thickbox email_link',
+		);
+
+		// View Order (frontend) link
+		$pmpro_orders_edit_page_action_links['view'] = array(
+			'url' => pmpro_url( 'invoice', "?invoice=" . $order->code ),
+			'name' => __( 'View', 'paid-memberships-pro' ),
+			'icon' => 'admin-users',
+		);
+
+		if ( pmpro_allowed_refunds( $order ) ) {
+			// Refund link
+			$pmpro_orders_edit_page_action_links['refund'] = array(
+				'url' => '#',
+				'name' => __( 'Refund', 'paid-memberships-pro' ),
+				'icon' => 'image-rotate',
+			);
+		}
+
+		/**
+		 * Filter the Orders page title action links.
+		 *
+		 * @param array $pmpro_orders_edit_page_action_links Page action links.
+		 * @return array $pmpro_orders_edit_page_action_links Page action links.
+		 */
+		$pmpro_orders_edit_page_action_links = apply_filters( 'pmpro_orders_edit_page_action_links', $pmpro_orders_edit_page_action_links );
+
+		// Display the links.
+		foreach ( $pmpro_orders_edit_page_action_links as $key => $pmpro_orders_edit_page_action_link ) {
+			// Build the selectors for the checkbox list based on number of levels.
+			$classes = array();
+			$classes[] = 'page-title-action';
+			if ( ! empty( $pmpro_orders_edit_page_action_link['icon'] ) ) {
+				$classes[] = 'pmpro-has-icon';
+				$classes[] = 'pmpro-has-icon-' . esc_attr( $pmpro_orders_edit_page_action_link['icon'] );
+			}
+			if ( ! empty( $pmpro_orders_edit_page_action_link['classes'] ) ) {
+				$classes[] = $pmpro_orders_edit_page_action_link['classes'];
+			}
+			$class = implode( ' ', array_unique( $classes ) ); ?>
+			<a id="<?php echo esc_attr( 'page-title-action-' . $key ); ?>" class="<?php echo esc_attr( $class ); ?>" href="<?php echo esc_url( $pmpro_orders_edit_page_action_link['url'] ); ?>"><?php echo esc_html( $pmpro_orders_edit_page_action_link['name'] ); ?></a>
+			<?php
+		}
+	} else { ?>
 		<h1 class="wp-heading-inline"><?php esc_html_e( 'New Order', 'paid-memberships-pro' ); ?></h1>
+	<?php } ?>
+
+	<?php if ( pmpro_allowed_refunds( $order ) ) { ?>
+		<script>
+			// Script to handle the "Refund" button.
+			jQuery('#page-title-action-refund').click(function() {
+				var refund_text = <?php echo wp_json_encode( $refund_text ); ?>;
+				var refund_nonce_url = <?php echo wp_json_encode( $refund_nonce_url ); ?>;
+				pmpro_askfirst( refund_text, refund_nonce_url );
+			});
+		</script>
 	<?php } ?>
 
 	<?php if ( ! empty( $pmpro_msg ) ) { ?>
@@ -1052,28 +1109,67 @@ if ( function_exists( 'pmpro_add_email_order_modal' ) ) {
 	<form id="posts-filter" method="get" action="">
 
 		<h1 class="wp-heading-inline"><?php esc_html_e( 'Orders', 'paid-memberships-pro' ); ?></h1>
-		<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'pmpro-orders', 'order' => -1 ), admin_url( 'admin.php' ) ) ); ?>" class="page-title-action pmpro-has-icon pmpro-has-icon-plus"><?php esc_html_e( 'Add New Order', 'paid-memberships-pro' ); ?></a>
-
 		<?php
-		// build the export URL
-		$export_url = admin_url( 'admin-ajax.php?action=orders_csv' );
-		$url_params = array(
-			'filter'          => $filter,
-			's'               => $s,
-			'l'               => $l,
-			'start-month'     => $start_month,
-			'start-day'       => $start_day,
-			'start-year'      => $start_year,
-			'end-month'       => $end_month,
-			'end-day'         => $end_day,
-			'end-year'        => $end_year,
-			'predefined-date' => $predefined_date,
-			'discount-code'	  => $discount_code,
-			'status'          => $status,
-		);
-		$export_url = add_query_arg( $url_params, $export_url );
+			// Build the page action links to return.
+			$pmpro_orders_page_action_links = array();
+
+			// Add New Order link
+			$pmpro_orders_page_action_links['add-new'] = array(
+				'url' => add_query_arg( array( 'page' => 'pmpro-orders', 'order' => -1 ), admin_url( 'admin.php' ) ),
+				'name' => __( 'Add New Order', 'paid-memberships-pro' ),
+				'icon' => 'plus',
+			);
+
+			// Build the export URL
+			$export_url = admin_url( 'admin-ajax.php?action=orders_csv' );
+			$url_params = array(
+				'filter'          => $filter,
+				's'               => $s,
+				'l'               => $l,
+				'start-month'     => $start_month,
+				'start-day'       => $start_day,
+				'start-year'      => $start_year,
+				'end-month'       => $end_month,
+				'end-day'         => $end_day,
+				'end-year'        => $end_year,
+				'predefined-date' => $predefined_date,
+				'discount-code'	  => $discount_code,
+				'status'          => $status,
+			);
+			$export_url = add_query_arg( $url_params, $export_url );
+
+			// Export to CSV link
+			$pmpro_orders_page_action_links['export'] = array(
+				'url' => $export_url,
+				'name' => __( 'Export to CSV', 'paid-memberships-pro' ),
+				'icon' => 'download',
+			);
+
+			/**
+			 * Filter the Orders page title action links.
+			 *
+			 * @param array $pmpro_orders_page_action_links Page action links.
+			 * @return array $pmpro_orders_page_action_links Page action links.
+			 */
+			$pmpro_orders_page_action_links = apply_filters( 'pmpro_orders_page_action_links', $pmpro_orders_page_action_links );
+
+			// Display the links.
+			foreach ( $pmpro_orders_page_action_links as $pmpro_orders_page_action_link ) {
+				// Build the selectors for the checkbox list based on number of levels.
+				$classes = array();
+				$classes[] = 'page-title-action';
+				if ( ! empty( $pmpro_orders_page_action_link['icon'] ) ) {
+					$classes[] = 'pmpro-has-icon';
+					$classes[] = 'pmpro-has-icon-' . esc_attr( $pmpro_orders_page_action_link['icon'] );
+				}
+				if ( ! empty( $pmpro_orders_page_action_link['classes'] ) ) {
+					$classes[] = $pmpro_orders_page_action_link['classes'];
+				}
+				$class = implode( ' ', array_unique( $classes ) ); ?>
+				<a class="<?php echo esc_attr( $class ); ?>" href="<?php echo esc_url( $pmpro_orders_page_action_link['url'] ); ?>"><?php echo esc_html( $pmpro_orders_page_action_link['name'] ); ?></a>
+				<?php
+			}
 		?>
-		<a target="_blank" href="<?php echo esc_url( $export_url ); ?>" class="page-title-action pmpro-has-icon pmpro-has-icon-download"><?php esc_html_e( 'Export to CSV', 'paid-memberships-pro' ); ?></a>
 
 		<hr class="wp-header-end">
 
