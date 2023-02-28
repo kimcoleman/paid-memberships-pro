@@ -23,381 +23,438 @@ function pmpro_membership_level_profile_fields($user)
 	$user_levels = pmpro_getMembershipLevelsForUser($user->ID);
 
 	?>
-	<h3><?php esc_html_e("Membership Levels", 'paid-memberships-pro' ); ?></h3>
-	<table class="form-table">
-	<?php
-		$show_membership_level = true;
-		$show_membership_level = apply_filters("pmpro_profile_show_membership_level", $show_membership_level, $user);
-		if($show_membership_level) {
-			foreach ( $groups as $group ) {
-				// Get all the levels in this group.
-				$levels_in_group = pmpro_get_levels_for_group( $group->id );
-				if ( empty( $levels_in_group ) ) {
-					continue;
-				}
+	<div class="pmpro_admin">
+		<div id="pmpro_user_membership_level" class="pmpro_section">
+			<div class="pmpro_section_toggle">
+				<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">
+					<span class="dashicons dashicons-arrow-up-alt2"></span>
+					<?php esc_html_e("Membership Levels", 'paid-memberships-pro' ); ?>
+				</button>
+			</div>
+			<div class="pmpro_section_inside">
+				<?php
+					$show_membership_level = true;
+					$show_membership_level = apply_filters( 'pmpro_profile_show_membership_level', $show_membership_level, $user );
+					if ( $show_membership_level ) {
+						foreach ( $groups as $group ) {
+							// Get all the levels in this group.
+							$levels_in_group = pmpro_get_levels_for_group( $group->id );
+							if ( empty( $levels_in_group ) ) {
+								continue;
+							}
 
-				// Get all the levels in this group that the user has.
-				$user_level_ids_in_group = array();
-				$user_levels_in_group    = array();
-				foreach ( $levels_in_group as $level ) {
-					foreach ( $user_levels as $user_level ) {
-						if ( $level->id === $user_level->id ) {
-							$user_level_ids_in_group[]          = $level->id;
-							$user_levels_in_group[ $level->id ] = $user_level;
-						}
-					}
-				}
+							// Get all the levels in this group that the user has.
+							$user_level_ids_in_group = array();
+							$user_levels_in_group    = array();
+							foreach ( $levels_in_group as $level ) {
+								foreach ( $user_levels as $user_level ) {
+									if ( $level->id === $user_level->id ) {
+										$user_level_ids_in_group[]          = $level->id;
+										$user_levels_in_group[ $level->id ] = $user_level;
+									}
+								}
+							}
 
-				// Set up the <tr> for this group.
-				?>
-				<tr>
-					<th><?php echo esc_html( $group->name ); ?></th>
-					<td>
-						<?php
-						// We are going to show different UIs depending on if users can have multiple levels from the group.
-						if  ( empty( $group->allow_multiple_selections ) ) {
-							// If the user somehow has multiple levels from this group, show a warning that non-selected levels will be removed on save.
-							if ( count( $user_level_ids_in_group ) > 1 ) {
-								?>
-								<div class="pmpro_admin">
+							// Set up the <tr> for this group.
+							?>
+							<h3><?php echo esc_html( $group->name ); ?></h3>
+							<?php
+							// We are going to show different UIs depending on if users can have multiple levels from the group.
+							if  ( empty( $group->allow_multiple_selections ) ) {
+								// If the user somehow has multiple levels from this group, show a warning that non-selected levels will be removed on save.
+								if ( count( $user_level_ids_in_group ) > 1 ) {
+									?>
 									<p class="pmpro_message pmpro_error">
 										<?php
 										esc_html_e( 'The user has multiple levels from this group. Saving this profile will remove all levels besides for the one selected below. The user\'s current levels from this group are:', 'paid-memberships-pro' );
 										echo ' ' . esc_html( implode( ', ', wp_list_pluck( $user_levels_in_group, 'name' ) ) );
 										?>
 									</p>
-									<br>
-								</div>
-								<?php
-							}
-							
-							// Users can only have one level from this group.
-							$shown_level = null;
-							?>
-							<select name="pmpro_group_level_select_<?php echo esc_attr( $group->id ) ?>" class="pmpro_group_level_select">
-								<option value="0"><?php esc_html_e( 'None', 'paid-memberships-pro' ); ?></option>
-								<?php
-								foreach ( $levels_in_group as $level ) {
-									if ( in_array( $level->id, $user_level_ids_in_group ) && empty( $shown_level ) ) {
-										$shown_level = pmpro_getSpecificMembershipLevelForUser( $user->ID, $level->id );
-									}
-									?>
-									<option value="<?php echo esc_attr( $level->id ); ?>" <?php selected( ! empty( $shown_level ) && $level->id == $shown_level->id ); ?>><?php echo esc_html( $level->name ); ?></option>
-									<?php
-								}
-								?>
-							</select>
-							<?php
-							// Show checkbox to set whether the membership expires if a level is selected.
-							$current_level_expires = false;
-							$enddate_to_show = date( 'Y-m-d H:i', strtotime( '+1 year' ) );
-							$shown_level_name_prefix = 'pmpro_membership_levels[]';
-							if ( ! empty( $shown_level ) ) {
-								$current_level_expires = ! empty( $shown_level->enddate );
-								$enddate_to_show = ! empty( $shown_level->enddate ) ? date( 'Y-m-d H:i', $shown_level->enddate ) : $enddate_to_show;
-								$shown_level_name_prefix = 'pmpro_membership_levels[' . $shown_level->id . ']';
-							}
-							?>
-							<p <?php if ( empty( $shown_level ) ) { echo 'style="display: none"'; } ?>>
-								<input type="checkbox" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[expires]" value="1" class="pmpro_expires_checkbox" <?php checked( $current_level_expires ); ?> />
-								<?php esc_html_e( 'Expires', 'paid-memberships-pro' ); ?>
-								<input type="datetime-local" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[expiration]" value="<?php echo esc_attr( $enddate_to_show ); ?>" <?php if ( ! $current_level_expires ) { echo 'style="display: none"'; } ?>>
-							</p>
-							<?php
-							// If we have a shown level, we want to show some subscription data.
-							if ( ! empty( $shown_level ) ) {
-								$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $shown_level->id );
-								if ( ! empty( $subscriptions ) ) {
-									$subscription = $subscriptions[0];
-									$billing_amount = $subscription->get_billing_amount();
-									$cycle_number   = $subscription->get_cycle_number();
-									$cycle_period   = $subscription->get_cycle_period();
-
-									$cost_text = esc_html__( 'Subscription', 'paid-memberships-pro' ) . ': ';
-									if ( $cycle_number == 1 ) {
-										$cost_text .= sprintf( esc_html__( '%1$s per %2$s', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_period );
-									} else {
-										$cost_text .= sprintf( esc_html__( '%1$s every %2$s %3$ss', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_number, $cycle_period );
-									}
-									?>
-									<p><?php echo esc_html( $cost_text ); ?></p>
-									<?php
-									// If the user has more than 1 subscription, show a warning message.
-									if ( count( $subscriptions ) > 1 ) {
-										?>
-										<div class="pmpro_admin">
-											<p class="pmpro_message pmpro_error">
-												<?php
-												esc_html_e( 'The user has multiple active subscriptions for this level. Old payment subscriptions should be cancelled using the Member History tool below.', 'paid-memberships-pro' );
-												?>
-											</p>
-											<br>
-										</div>
-										<?php
-									}
-									// If the user changes levels, we are going to want to show a cancel subscription dropdown.
-									?>
-									<label for="<?php echo esc_attr( $shown_level_name_prefix ); ?>[subscription_action]" style="display: none">
-										<select name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[subscription_action]">
-											<option value="cancel"><?php esc_html_e( 'Cancel payment subscription (Reccomended)', 'paid-memberships-pro' ); ?></option>
-											<option value="keep"><?php esc_html_e( 'Keep subscription active', 'paid-memberships-pro' ); ?></option>
-										</select>
-									</label>
-									<br/>
 									<?php
 								}
 
-								// Check if we can refund the last order for this level.
-								$last_order = new MemberOrder();
-								$last_order->getLastMemberOrder( $user->ID, array( 'success', 'refunded' ), $shown_level->id );
-								if ( pmpro_allowed_refunds( $last_order ) ) {
-									?>
-									<label for="<?php echo esc_attr( $shown_level_name_prefix ); ?>[refund]" style="display: none">
-										<input type="checkbox" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[refund]" value="1" />
-										<?php printf( esc_html( 'Refund the last payment (%s).', 'paid-memberships-pro' ), pmpro_formatPrice( $last_order->total ) ); ?>
-									</label>
-									<?php
-								}
-							}
-							// Loop through all levels again and create hidden fields for each.
-							foreach ( $levels_in_group as $level ) {
-								$name_prefix = 'pmpro_membership_levels[' . $level->id . ']';
+								// Users can only have one level from this group.
+								$shown_level = null;
 								?>
-								<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $level->id ); ?>" />
-								<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[has_level]" class="pmpro_has_level_hidden" value="<?php echo ( ! empty( $shown_level ) && $shown_level->id == $level->id ) ? 1 : 0; ?>" />
-								<?php
-								// Let's also check if the user has an active subscription for this level. If they do and it's not the shown level, we'll show a warning message.
-								$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
-								if ( ! empty( $subscriptions ) && ( empty( $shown_level ) || $shown_level->id != $level->id ) ) {
-									?>
-									<div class="pmpro_admin">
-										<p class="pmpro_message pmpro_error">
-											<?php
-											printf( esc_html__( 'The user has an active subscription for the %s level. The subscription should be cancelled using the Member History tool below.', 'paid-memberships-pro' ), esc_html( $level->name ) );
-											?>
-										</p>
-										<br>
-									</div>
-									<?php
-								}
-							}
-						} else {
-							// Users can have multiple levels from this group.
-							?>
-							<table>
-								<thead>
-									<tr>
-										<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
-										<th><?php esc_html_e( 'Expiration', 'paid-memberships-pro' ); ?></th>
-										<th><?php esc_html_e( 'Subscription', 'paid-memberships-pro' ); ?></th>
-									</tr>
-								</thead>
-								<?php
-								foreach ( $levels_in_group as $level ) {
-									$has_level = in_array( $level->id, $user_level_ids_in_group );
-									$name_prefix = 'pmpro_membership_levels[' . $level->id . ']';
-									?>
-									<tr>
-										<td>
-											<label for="<?php echo esc_attr( $name_prefix ); ?>[has_level]">
-												<input type="checkbox" name="<?php echo esc_attr( $name_prefix ) ?>[has_level]" id="pmpro_membership_level_checkbox_<?php echo esc_attr( $level->id ); ?>" class="pmpro_has_level_checkbox" value="1" <?php checked( $has_level ); ?> />
-												<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $level->id ); ?>" />
-												<?php echo esc_html( $level->name ); ?>
-											</label>
-										</td>
-										<td>
-											<?php
-											// Get the expiration date to show for this level.
-											$enddate_to_show = date( 'Y-m-d H:i', strtotime( '+1 year' ) );
-											$has_enddate = false;
-											if ( ! empty( $user_levels_in_group[ $level->id ] ) ) {
-												$has_enddate = ! empty( $user_levels_in_group[ $level->id ]->enddate );
-												$enddate_to_show = $has_enddate ? date( 'Y-m-d H:i', $user_levels_in_group[ $level->id ]->enddate ) : $enddate_to_show;
-											}
-											?>
-											<input type="checkbox" name="<?php echo esc_attr( $name_prefix ) ?>[expires]" class="pmpro_expires_checkbox" value="1" <?php checked( $has_enddate ); ?> <?php if ( ! $has_level ) { echo 'style="display: none"'; } ?> />
-											<input type="datetime-local" name="<?php echo esc_attr( $name_prefix ) ?>[expiration]" value="<?php echo esc_attr( $enddate_to_show ); ?>" <?php if ( ! $has_enddate ) { echo 'style="display: none"'; } ?>>
-										</td>
-										<td class="pmpro_levels_subscription_data">
-											<?php
-											// If the user has  this level and they have a subscription for the level, let's show the subscription amount.
-											if  ( $has_level  ) {
-												$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
-												if ( ! empty( $subscriptions ) ) {
-													// If the user has more than 1 subscription, show a warning message.
-													if ( count( $subscriptions ) > 1 ) {
+								<table class="wp-list-table widefat striped">
+									<thead>
+										<tr>
+											<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Expiration', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Subscription', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Actions', 'paid-memberships-pro' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="user_level_name_data">
+												<select name="pmpro_group_level_select_<?php echo esc_attr( $group->id ) ?>" class="pmpro_group_level_select">
+												<option value="0"><?php esc_html_e( 'None', 'paid-memberships-pro' ); ?></option>
+													<?php
+													foreach ( $levels_in_group as $level ) {
+														if ( in_array( $level->id, $user_level_ids_in_group ) && empty( $shown_level ) ) {
+															$shown_level = pmpro_getSpecificMembershipLevelForUser( $user->ID, $level->id );
+														}
 														?>
-														<div class="pmpro_admin">
+														<option value="<?php echo esc_attr( $level->id ); ?>" <?php selected( ! empty( $shown_level ) && $level->id == $shown_level->id ); ?>><?php echo esc_html( $level->name ); ?></option>
+														<?php
+													}
+													?>
+												</select>
+											</td>
+											<td class="user_level_expiration_data">
+												<?php
+												// Show checkbox to set whether the membership expires if a level is selected.
+												$current_level_expires = false;
+												$enddate_to_show = date( 'Y-m-d H:i', strtotime( '+1 year' ) );
+												$shown_level_name_prefix = 'pmpro_membership_levels[]';
+												if ( ! empty( $shown_level ) ) {
+													$current_level_expires = ! empty( $shown_level->enddate );
+													$enddate_to_show = ! empty( $shown_level->enddate ) ? date( 'Y-m-d H:i', $shown_level->enddate ) : $enddate_to_show;
+													$shown_level_name_prefix = 'pmpro_membership_levels[' . $shown_level->id . ']';
+												}
+												?>
+												<div <?php if ( empty( $shown_level ) ) { echo 'style="display: none"'; } ?>>
+													<input type="datetime-local" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[expiration]" value="<?php echo esc_attr( $enddate_to_show ); ?>" <?php if ( ! $current_level_expires ) { echo 'style="display: none"'; } ?>>
+													<label for="pmpro_expires_checkbox_group_<?php echo esc_attr( $group->id ); ?>" <?php if ( $current_level_expires ) { echo 'style="display: none"'; } ?>>
+														<input type="checkbox" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[expires]" value="1" id="pmpro_expires_checkbox_group_<?php echo esc_attr( $group->id ); ?>" class="pmpro_expires_checkbox" <?php checked( $current_level_expires ); ?> />
+														<?php esc_html_e( 'Set Expiration', 'paid-memberships-pro' ); ?>
+													</label>
+												</div>
+											</td>
+											<td class="pmpro_levels_subscription_data">
+												<?php
+												// If we have a shown level, we want to show some subscription data.
+												if ( ! empty( $shown_level ) ) {
+													$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $shown_level->id );
+													if ( ! empty( $subscriptions ) ) {
+														$subscription = $subscriptions[0];
+														$billing_amount = $subscription->get_billing_amount();
+														$cycle_number   = $subscription->get_cycle_number();
+														$cycle_period   = $subscription->get_cycle_period();
+
+														$cost_text = '';
+														if ( $cycle_number == 1 ) {
+															$cost_text .= sprintf( esc_html__( '%1$s per %2$s', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_period );
+														} else {
+															$cost_text .= sprintf( esc_html__( '%1$s every %2$s %3$ss', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_number, $cycle_period );
+														}
+														?>
+														<p><?php echo esc_html( $cost_text ); ?></p>
+														<?php
+														// If the user has more than 1 subscription, show a warning message.
+														if ( count( $subscriptions ) > 1 ) {
+															?>
 															<p class="pmpro_message pmpro_error">
 																<?php
 																esc_html_e( 'The user has multiple active subscriptions for this level. Old payment subscriptions should be cancelled using the Member History tool below.', 'paid-memberships-pro' );
 																?>
 															</p>
-															<br>
-														</div>
+															<?php
+														}
+														// If the user changes levels, we are going to want to show a cancel subscription dropdown.
+														?>
+														<label for="<?php echo esc_attr( $shown_level_name_prefix ); ?>[subscription_action]" style="display: none">
+															<select name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[subscription_action]">
+																<option value="cancel"><?php esc_html_e( 'Cancel payment subscription (recommended)', 'paid-memberships-pro' ); ?></option>
+																<option value="keep"><?php esc_html_e( 'Keep subscription active', 'paid-memberships-pro' ); ?></option>
+															</select>
+														</label>
 														<?php
 													}
-													$subscription = $subscriptions[0];
-													$billing_amount = $subscription->get_billing_amount();
-													$cycle_number   = $subscription->get_cycle_number();
-													$cycle_period   = $subscription->get_cycle_period();
 
-													if ( $cycle_number == 1 ) {
-														$cost_text = sprintf( esc_html__( '%1$s per %2$s', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_period );
-													} else {
-														$cost_text = sprintf( esc_html__( '%1$s every %2$s %3$ss', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_number, $cycle_period );
+													// Check if we can refund the last order for this level.
+													$last_order = new MemberOrder();
+													$last_order->getLastMemberOrder( $user->ID, array( 'success', 'refunded' ), $shown_level->id );
+													if ( pmpro_allowed_refunds( $last_order ) ) {
+														?>
+														<label for="<?php echo esc_attr( $shown_level_name_prefix ); ?>[refund]" style="display: none">
+															<input type="checkbox" name="<?php echo esc_attr( $shown_level_name_prefix ); ?>[refund]" value="1" />
+															<?php printf( esc_html( 'Refund the last payment (%s).', 'paid-memberships-pro' ), pmpro_formatPrice( $last_order->total ) ); ?>
+														</label>
+														<?php
 													}
-													?>
-													<p><?php echo esc_html( $cost_text ); ?></p>
-													<label for="<?php echo esc_attr( $name_prefix ); ?>[subscription_action]" style="display: none">
-														<select name="<?php echo esc_attr( $name_prefix ); ?>[subscription_action]">
-															<option value="cancel"><?php esc_html_e( 'Cancel payment subscription (Reccomended)', 'paid-memberships-pro' ); ?></option>
-															<option value="keep"><?php esc_html_e( 'Keep subscription active', 'paid-memberships-pro' ); ?></option>
-														</select>
-													</label>
-													<br/>
-													<?php
-												} else {
-													?>
-													<p><?php esc_html_e( 'No subscription found.', 'paid-memberships-pro' ); ?></p>
-													<?php
 												}
-												// Check if we can refund the last order for this level.
-												$last_order = new MemberOrder();
-												$last_order->getLastMemberOrder( $user->ID, array( 'success', 'refunded' ), $level->id );
-												if ( pmpro_allowed_refunds( $last_order ) ) {
+												// Loop through all levels again and create hidden fields for each.
+												foreach ( $levels_in_group as $level ) {
+													$name_prefix = 'pmpro_membership_levels[' . $level->id . ']';
 													?>
-													<label for="<?php echo esc_attr( $name_prefix ); ?>[refund]" style="display: none">
-														<input type="checkbox" name="<?php echo esc_attr( $name_prefix ); ?>[refund]" value="1" />
-														<?php printf( esc_html( 'Refund the last payment (%s).', 'paid-memberships-pro' ), pmpro_formatPrice( $last_order->total ) ); ?>
-													</label>
+													<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $level->id ); ?>" />
+													<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[has_level]" class="pmpro_has_level_hidden" value="<?php echo ( ! empty( $shown_level ) && $shown_level->id == $level->id ) ? 1 : 0; ?>" />
 													<?php
+													// Let's also check if the user has an active subscription for this level. If they do and it's not the shown level, we'll show a warning message.
+													$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
+													if ( ! empty( $subscriptions ) && ( empty( $shown_level ) || $shown_level->id != $level->id ) ) {
+														?>
+														<p class="pmpro_message pmpro_error">
+															<?php
+															printf( esc_html__( 'The user has an active subscription for the %s level. The subscription should be cancelled using the Member History tool below.', 'paid-memberships-pro' ), esc_html( $level->name ) );
+															?>
+														</p>
+														<?php
+													}
 												}
-											} else {
-												// If the user doesn't have this level but has a subscription for the level, we should warn them.
-												$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
-												if ( ! empty( $subscriptions ) ) {
-													?>
-													<div class="pmpro_admin">
+											?>
+											</td>
+											<td class="user_level_actions_data">
+												...
+											</td>
+										</tr>
+									</tbody>
+								</table>
+								<?php
+							} else {
+								// Users can have multiple levels from this group.
+								?>
+								<table class="wp-list-table widefat striped">
+									<thead>
+										<tr>
+											<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Expiration', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Subscription', 'paid-memberships-pro' ); ?></th>
+											<th><?php esc_html_e( 'Actions', 'paid-memberships-pro' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+									<?php
+									foreach ( $levels_in_group as $level ) {
+										$has_level = in_array( $level->id, $user_level_ids_in_group );
+										$name_prefix = 'pmpro_membership_levels[' . $level->id . ']';
+										$actions = array();
+										?>
+										<tr>
+											<td class="user_level_name_data">
+												<h4><?php echo esc_html( $level->name ); ?></h4>
+												<label for="<?php echo esc_attr( $name_prefix ); ?>[has_level]">
+													<input type="checkbox" name="<?php echo esc_attr( $name_prefix ) ?>[has_level]" id="<?php echo esc_attr( $name_prefix ); ?>[has_level]" class="pmpro_has_level_checkbox" value="1" <?php checked( $has_level ); ?> />
+													<?php esc_html_e( 'Add/Remove Level' ); ?>
+													<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $level->id ); ?>" />
+												</label>
+											</td>
+											<td class="user_level_expiration_data">
+												<?php
+												// Get the expiration date to show for this level.
+												$enddate_to_show = date( 'Y-m-d H:i', strtotime( '+1 year' ) );
+												$has_enddate = false;
+												if ( ! empty( $user_levels_in_group[ $level->id ] ) ) {
+													$has_enddate = ! empty( $user_levels_in_group[ $level->id ]->enddate );
+													$enddate_to_show = $has_enddate ? date( 'Y-m-d H:i', $user_levels_in_group[ $level->id ]->enddate ) : $enddate_to_show;
+												} ?>
+												<input type="datetime-local" name="<?php echo esc_attr( $name_prefix ) ?>[expiration]" value="<?php echo esc_attr( $enddate_to_show ); ?>" <?php if ( ! $has_enddate ) { echo 'style="display: none"'; } ?>>
+												<label for="pmpro_expires_checkbox_<?php echo esc_attr( $level->id ); ?>" <?php if ( ! $has_level ) { echo 'style="display: none"'; } ?>>
+														<input type="checkbox" name="<?php echo esc_attr( $name_prefix ) ?>[expires]" class="pmpro_expires_checkbox" id="pmpro_expires_checkbox_<?php echo esc_attr( $level->id ); ?>" value="1" <?php checked( $has_enddate ); ?> />
+													<?php esc_html_e( 'Set Expiration' ); ?>
+												</label>
+											</td>
+											<td class="pmpro_levels_subscription_data">
+												<?php
+												// If the user has a subscription for this level, show the subscription amount.
+												if ( $has_level ) {
+													$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
+													if ( ! empty( $subscriptions ) ) {
+														// If the user has more than 1 subscription, show a warning message.
+														if ( count( $subscriptions ) > 1 ) {
+															?>
 															<p class="pmpro_message pmpro_error">
 																<?php
-																esc_html_e( 'The user has a subscription for this level, but does not have a membership for this level. Old payment subscriptions should be cancelled using the Member History tool below.', 'paid-memberships-pro' );
+																esc_html_e( 'The user has multiple active subscriptions for this level. Old payment subscriptions should be cancelled using the Member History tool below.', 'paid-memberships-pro' );
 																?>
 															</p>
-															<br>
-														</div>
-													<?php
+															<?php
+														}
+														$subscription = $subscriptions[0];
+														$billing_amount = $subscription->get_billing_amount();
+														$cycle_number   = $subscription->get_cycle_number();
+														$cycle_period   = $subscription->get_cycle_period();
+
+														if ( $cycle_number == 1 ) {
+															$cost_text = sprintf( esc_html__( '%1$s per %2$s', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_period );
+														} else {
+															$cost_text = sprintf( esc_html__( '%1$s every %2$s %3$ss', 'paid-memberships-pro' ), pmpro_formatPrice( $billing_amount ), $cycle_number, $cycle_period );
+														}
+														?>
+														<?php echo esc_html( $cost_text ); ?>
+														<label for="<?php echo esc_attr( $name_prefix ); ?>[subscription_action]" style="display: none">
+															<select name="<?php echo esc_attr( $name_prefix ); ?>[subscription_action]">
+																<option value="cancel"><?php esc_html_e( 'Cancel payment subscription (recommended)', 'paid-memberships-pro' ); ?></option>
+																<option value="keep"><?php esc_html_e( 'Keep subscription active', 'paid-memberships-pro' ); ?></option>
+															</select>
+														</label>
+														<?php
+													} else {
+														esc_html_e( 'No subscription found.', 'paid-memberships-pro' );
+													}
+													// Check if we can refund the last order for this level.
+													$last_order = new MemberOrder();
+													$last_order->getLastMemberOrder( $user->ID, array( 'success', 'refunded' ), $level->id );
+													if ( pmpro_allowed_refunds( $last_order ) ) {
+														?>
+														<label for="<?php echo esc_attr( $name_prefix ); ?>[refund]" style="display: none">
+															<input type="checkbox" name="<?php echo esc_attr( $name_prefix ); ?>[refund]" value="1" />
+															<?php printf( esc_html( 'Refund the last payment (%s).', 'paid-memberships-pro' ), pmpro_formatPrice( $last_order->total ) ); ?>
+														</label>
+														<?php
+													}
+												} else {
+													// If the user doesn't have this level but has a subscription for the level, we should warn them.
+													$subscriptions = PMPro_Subscription::get_subscriptions_for_user( $user->ID, $level->id );
+													if ( ! empty( $subscriptions ) ) {
+														?>
+														<p class="pmpro_message pmpro_error">
+															<?php
+															esc_html_e( 'The user has a subscription for this level, but does not have a membership for this level. Old payment subscriptions should be cancelled using the Member History tool below.', 'paid-memberships-pro' );
+															?>
+														</p>
+														<?php
+													}
 												}
-											}
-											?>
-										</td>
-									</tr>
-									<?php								
-								}
-								?>
-							</table>
-							<?php
-						}
-					// Close the <tr> and <td>.
-					?>
-					</td>
-				</tr>
-				<script>
-					jQuery( document ).ready( function() {
-						// Show/hide the expiration date field when the level select is changed.
-						jQuery( '.pmpro_group_level_select' ).on( 'change', function() {
-							// Set all sibling hidden fields to 0.
-							jQuery( this ).siblings( '.pmpro_has_level_hidden' ).val( 0 );
+												?>
+											</td>
+											<td class="user_level_actions_data">
+												<?php
+													$actions['edit'] = sprintf(
+														'<a href="javascript:void(0)" title="%1$s" name="' . esc_attr( $name_prefix ) . '[edit]">%3$s</a>',
+														esc_attr__( 'Edit', 'paid-memberships-pro' ),
+														'',
+														esc_html__( 'Edit', 'paid-memberships-pro' )
+													);
 
-							// Show/hide the "level change" options.
-							jQuery( this ).siblings( 'label' ).show();
-							jQuery( 'label[for="pmpro_membership_levels[' + jQuery( this ).val() + '][subscription_action]"' ).hide();
-							jQuery( 'label[for="pmpro_membership_levels[' + jQuery( this ).val() + '][refund]"' ).hide();
+													//var_dump($actions);
+													$actions_html = [];
 
-							// Update fields for the current level.
-							if ( jQuery( this ).val() > 0 ) {
-								// Set the hidden field for the selected level to 1.
-								jQuery( 'input[name="pmpro_membership_levels[' + jQuery( this ).val() + '][has_level]"' ).val( 1 );
+													foreach ( $actions as $action => $link ) {
+														$actions_html[] = sprintf(
+															'<span class="%1$s">%2$s</span>',
+															esc_attr( $action ),
+															$link
+														);
+													}
 
-								// Update the names for the expires and expiration fields.
-								jQuery( this ).next( 'p' ).find( 'input[type="checkbox"]' ).attr( 'name', 'pmpro_membership_levels[' + jQuery( this ).val() + '][expires]' );
-								jQuery( this ).next( 'p' ).find( 'input[type="datetime-local"]' ).attr( 'name', 'pmpro_membership_levels[' + jQuery( this ).val() + '][expiration]' );
-
-								// Show the expiration fields.
-								jQuery( this ).next( 'p' ).show();
-							} else {
-								// Hide the expiration fields.
-								jQuery( this ).next( 'p' ).hide();
+													if ( ! empty( $actions_html ) ) {
+														//echo implode( ' | ', $actions_html );
+														echo implode( '', $actions_html );
+													}
+												?>
+											</td>
+										</tr>
+										<?php								
+									}
+									?>
+									</tbody>
+								</table>
+								<?php
 							}
-						} );
+						// Close the <tr> and <td>.
+						?>
+						<script>
+							jQuery( document ).ready( function() {
+								// Show/hide the expiration date field when the level select is changed.
+								jQuery( '.pmpro_group_level_select' ).on( 'change', function() {
+									// Set all sibling hidden fields to 0.
+									jQuery( this ).siblings( '.pmpro_has_level_hidden' ).val( 0 );
 
-						// Show/hide the expiration date field when the checkbox is clicked.
-						jQuery( '.pmpro_expires_checkbox' ).on( 'change', function() {
-							if ( jQuery( this ).is( ':checked' ) ) {
-								jQuery( this ).next( 'input' ).show();
-							} else {
-								jQuery( this ).next( 'input' ).hide();
-							}
-						} );
+									// Show/hide the "level change" options.
+									jQuery( this ).siblings( 'label' ).show();
+									jQuery( 'label[for="pmpro_membership_levels[' + jQuery( this ).val() + '][subscription_action]"' ).hide();
+									jQuery( 'label[for="pmpro_membership_levels[' + jQuery( this ).val() + '][refund]"' ).hide();
 
-						// Show/hide the expiration date and subscription fields when the "has level" checkbox is toggled.
-						jQuery( '.pmpro_has_level_checkbox' ).on( 'change', function() {
-							if ( jQuery( this ).is( ':checked' ) ) {
-								// Show  the expiration checkbox.
-								jQuery( this ).parent().parent().next().find('.pmpro_expires_checkbox').show();
-								if ( jQuery( this ).parent().parent().next().find('.pmpro_expires_checkbox').is( ':checked' ) ) {
-									// Show the expiration date field.
-									jQuery( this ).parent().parent().next().find('.pmpro_expires_checkbox').next( 'input' ).show();
-								}
-								// Hide the subscription cancel fields.
-								jQuery( this ).parent().parent().next().next().find('label').hide();
-							} else {
-								// Hide the expiration fields.
-								jQuery( this ).parent().parent().next().find('input').hide();
-								// Show the subscription cancel fields.
-								jQuery( this ).parent().parent().next().next().find('label').show();
-							}
-						} );
-					} );
-				</script>
-				<?php
-			}
-		}
+									// Update fields for the current level.
+									if ( jQuery( this ).val() > 0 ) {
+										// Set the hidden field for the selected level to 1.
+										jQuery( 'input[name="pmpro_membership_levels[' + jQuery( this ).val() + '][has_level]"' ).val( 1 );
 
-		$tospage_id = pmpro_getOption( 'tospage' );
-		$consent_log = pmpro_get_consent_log( $user->ID, true );
+										// Update the names for the expires and expiration fields.
+										jQuery( this ).next( 'p' ).find( 'input[type="checkbox"]' ).attr( 'name', 'pmpro_membership_levels[' + jQuery( this ).val() + '][expires]' );
+										jQuery( this ).next( 'p' ).find( 'input[type="datetime-local"]' ).attr( 'name', 'pmpro_membership_levels[' + jQuery( this ).val() + '][expiration]' );
 
-		if( !empty( $tospage_id ) || !empty( $consent_log ) ) {
-		?>
-		<tr>
-			<th><label for="tos_consent_history"><?php esc_html_e("TOS Consent History", 'paid-memberships-pro' ); ?></label></th>
-			<td id="tos_consent_history">
-				<?php
-					if ( ! empty( $consent_log ) ) {
-						// Build the selectors for the invoices history list based on history count.
-						$consent_log_classes = array();
-						$consent_log_classes[] = "pmpro_consent_log";
-						if ( count( $consent_log ) > 5 ) {
-							$consent_log_classes[] = "pmpro_scrollable";
-						}
-						$consent_log_class = implode( ' ', array_unique( $consent_log_classes ) );
-						echo '<ul class="' . esc_attr( $consent_log_class ) . '">';
-						foreach( $consent_log as $entry ) {
-							echo '<li>' . pmpro_consent_to_text( $entry ) . '</li>';
-						}
-						echo '</ul> <!-- end pmpro_consent_log -->';
-					} else {
-						echo __( 'N/A', 'paid-memberships-pro' );
+										// Show the expiration fields.
+										jQuery( this ).next( 'p' ).show();
+									} else {
+										// Hide the expiration fields.
+										jQuery( this ).next( 'p' ).hide();
+									}
+								} );
+
+								// Show/hide the expiration date field when the checkbox is clicked.
+								jQuery( '.pmpro_expires_checkbox' ).on( 'change', function() {
+									if ( jQuery( this ).is( ':checked' ) ) {
+										jQuery( this ).parent('label').prev( 'input' ).show();
+									} else {
+										jQuery( this ).parent('label').prev( 'input' ).hide();
+									}
+								} );
+
+								// Show/hide the expiration date and subscription fields when the "has level" checkbox is toggled.
+								jQuery( '.pmpro_has_level_checkbox' ).on( 'change', function() {
+									if ( jQuery( this ).is( ':checked' ) ) {
+										// Show the expiration checkbox.
+										jQuery( this ).parent().parent().next().find('label').show();
+										/*
+										if ( jQuery( this ).parent().parent().next().find('.pmpro_expires_checkbox').is( ':checked' ) ) {
+											// Show the expiration date field.
+											jQuery( this ).parent().parent().next().find('.pmpro_expires_checkbox').next( 'input' ).show();
+										}*/
+										// Hide the subscription cancel fields.
+										jQuery( this ).parent().parent().next().next().find('label').hide();
+									} else {
+										// Hide the expiration fields.
+										jQuery( this ).parent().parent().next().find('label').hide();
+										jQuery( this ).parent().parent().next().find('label').next().removeAttr('checked');
+										jQuery( this ).parent().parent().next().find('input[type=datetime-local]').hide();
+										// Show the subscription cancel fields.
+										jQuery( this ).parent().parent().next().next().find('label').show();
+									}
+								} );
+							} );
+						</script>
+						<?php
 					}
+				}
 				?>
-			</td>
-		</tr>
+				</div>
+			</div> <!-- end Membership Levels section -->
+
+			<?php
+				$tospage_id = pmpro_getOption( 'tospage' );
+				$consent_log = pmpro_get_consent_log( $user->ID, true );
+
+				if ( ! empty( $tospage_id ) || !empty( $consent_log ) ) { ?>
+					<div id="tos_consent_history" class="pmpro_section" data-visibility="shown" data-activated="true">
+						<div class="pmpro_section_toggle">
+							<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">
+								<span class="dashicons dashicons-arrow-up-alt2"></span>
+								<?php esc_html_e( 'TOS Consent History', 'paid-memberships-pro' ); ?>
+							</button>
+						</div>
+						<div class="pmpro_section_inside">
+						<?php
+							if ( ! empty( $consent_log ) ) {
+								// Build the selectors for the invoices history list based on history count.
+								$consent_log_classes = array();
+								$consent_log_classes[] = "pmpro_consent_log";
+								if ( count( $consent_log ) > 5 ) {
+									$consent_log_classes[] = "pmpro_scrollable";
+								}
+								$consent_log_class = implode( ' ', array_unique( $consent_log_classes ) );
+								echo '<ul class="' . esc_attr( $consent_log_class ) . '">';
+								foreach( $consent_log as $entry ) {
+									echo '<li>' . pmpro_consent_to_text( $entry ) . '</li>';
+								}
+								echo '</ul> <!-- end pmpro_consent_log -->';
+							} else {
+								echo __( 'N/A', 'paid-memberships-pro' );
+							}
+						?>
+						</div>
+					</div> <!-- end TOS Consent History section -->
+					<?php
+				}
+			?>
 		<?php
-		}
-		?>
-	</table>
+		do_action("pmpro_after_membership_level_profile_fields", $user);
+	?>
+	</div> <!-- end pmpro_admin -->
 	<?php
-	do_action("pmpro_after_membership_level_profile_fields", $user);
 }
 
 /*
@@ -560,247 +617,255 @@ function pmpro_membership_history_profile_fields( $user ) {
 	$totalvalue = $wpdb->get_var( $wpdb->prepare( "SELECT SUM(total) FROM $wpdb->pmpro_membership_orders WHERE user_id = %d AND status NOT IN('token','review','pending','error','refunded')", $user->ID ) );
 
 	if ( $invoices || $subscriptions || $levelshistory ) { ?>
-		<hr />
-		<h3><?php esc_html_e( 'Member History', 'paid-memberships-pro' ); ?></h3>
-		<p><strong><?php esc_html_e( 'Total Paid', 'paid-memberships-pro' ); ?></strong> <?php echo pmpro_formatPrice( $totalvalue ); ?></p>
-		<ul id="member-history-filters" class="subsubsub">
-			<li id="member-history-filters-orders"><a href="javascript:void(0);" class="current orders tab"><?php esc_html_e( 'Order History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $invoices ); ?>)</span></li>
-			<li id="member-history-filters-subscriptions">| <a href="javascript:void(0);" class="tab"><?php esc_html_e( 'Subscription History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $subscriptions ); ?>)</span></li>
-			<li id="member-history-filters-memberships">| <a href="javascript:void(0);" class="tab"><?php esc_html_e( 'Membership Levels History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $levelshistory ); ?>)</span></li>
-		</ul>
-		<br class="clear" />
-		<?php
-			// Build the selectors for the invoices history list based on history count.
-			$invoices_classes = array();
-			$invoices_classes[] = "widgets-holder-wrap";
-			if ( ! empty( $invoices ) && count( $invoices ) > 2 ) {
-				$invoices_classes[] = "pmpro_scrollable";
-			}
-			$invoice_class = implode( ' ', array_unique( $invoices_classes ) );
-		?>
-		<div id="member-history-orders" class="<?php echo esc_attr( $invoice_class ); ?>">
-		<?php if ( $invoices ) { ?>
-			<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Date', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Code', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Total', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Discount Code', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
-					<?php do_action('pmpromh_orders_extra_cols_header');?>
-				</tr>
-			</thead>
-			<tbody>
-			<?php
-				foreach ( $invoices as $invoice ) { 
-					$level = pmpro_getLevel( $invoice->membership_id );
-					?>
-					<tr>
-						<td>
-							<?php
-								echo esc_html( sprintf(
-									// translators: %1$s is the date and %2$s is the time.
-									__( '%1$s at %2$s', 'paid-memberships-pro' ),
-									esc_html( date_i18n( get_option( 'date_format' ), $invoice->timestamp ) ),
-									esc_html( date_i18n( get_option( 'time_format' ), $invoice->timestamp ) )
-								) );
+		<div id="pmpro-member-history" class="pmpro_section" data-visibility="shown" data-activated="true">
+			<div class="pmpro_section_toggle">
+				<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">
+					<span class="dashicons dashicons-arrow-up-alt2"></span>
+					<?php esc_html_e( 'Member History', 'paid-memberships-pro' ); ?>
+				</button>
+			</div>
+			<div class="pmpro_section_inside">
+				<p><strong><?php esc_html_e( 'Total Paid', 'paid-memberships-pro' ); ?></strong> <?php echo pmpro_formatPrice( $totalvalue ); ?></p>
+				<ul id="member-history-filters" class="subsubsub">
+					<li id="member-history-filters-orders"><a href="javascript:void(0);" class="current orders tab"><?php esc_html_e( 'Order History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $invoices ); ?>)</span></li>
+					<li id="member-history-filters-subscriptions">| <a href="javascript:void(0);" class="tab"><?php esc_html_e( 'Subscription History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $subscriptions ); ?>)</span></li>
+					<li id="member-history-filters-memberships">| <a href="javascript:void(0);" class="tab"><?php esc_html_e( 'Membership Levels History', 'paid-memberships-pro' ); ?></a> <span>(<?php echo count( $levelshistory ); ?>)</span></li>
+				</ul>
+				<br class="clear" />
+				<?php
+					// Build the selectors for the invoices history list based on history count.
+					$invoices_classes = array();
+					$invoices_classes[] = "widgets-holder-wrap";
+					if ( ! empty( $invoices ) && count( $invoices ) > 2 ) {
+						$invoices_classes[] = "pmpro_scrollable";
+					}
+					$invoice_class = implode( ' ', array_unique( $invoices_classes ) );
+				?>
+				<div id="member-history-orders" class="<?php echo esc_attr( $invoice_class ); ?>">
+				<?php if ( $invoices ) { ?>
+					<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Date', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Code', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Total', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Discount Code', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
+							<?php do_action('pmpromh_orders_extra_cols_header');?>
+						</tr>
+					</thead>
+					<tbody>
+					<?php
+						foreach ( $invoices as $invoice ) { 
+							$level = pmpro_getLevel( $invoice->membership_id );
 							?>
-						</td>
-						<td class="order_code column-order_code has-row-actions">
-							<strong><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'pmpro-orders', 'order' => $invoice->id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $invoice->code ); ?></a></strong>
-							<div class="row-actions">
-								<span class="id">
-									<?php echo sprintf(
-										// translators: %s is the Order ID.
-										__( 'ID: %s', 'paid-memberships-pro' ),
-										esc_attr( $invoice->id )
-									); ?>
-								</span> |
-								<span class="edit">
-									<a title="<?php esc_attr_e( 'Edit', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( add_query_arg( array( 'page' => 'pmpro-orders', 'order' => $invoice->id ), admin_url('admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'paid-memberships-pro' ); ?></a>
-								</span> |
-								<span class="print">
-									<a target="_blank" title="<?php esc_attr_e( 'Print', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( add_query_arg( array( 'action' => 'pmpro_orders_print_view', 'order' => $invoice->id ), admin_url('admin-ajax.php' ) ) ); ?>"><?php esc_html_e( 'Print', 'paid-memberships-pro' ); ?></a>
-								</span>
-								<?php if ( function_exists( 'pmpro_add_email_order_modal' ) ) { ?>
-									 |
-									<span class="email">
-										<a title="<?php esc_attr_e( 'Email', 'paid-memberships-pro' ); ?>" href="#TB_inline?width=600&height=200&inlineId=email_invoice" class="thickbox email_link" data-order="<?php echo esc_attr( $invoice->id ); ?>"><?php esc_html_e( 'Email', 'paid-memberships-pro' ); ?></a>
-									</span>
-								<?php } ?>
-							</div> <!-- end .row-actions -->
-						</td>
-						<td>
-							<?php
-								if ( ! empty( $level ) ) {
-									echo esc_html( $level->name );
-								} elseif ( $invoice->membership_id > 0 ) { ?>
-									[<?php esc_html_e( 'deleted', 'paid-memberships-pro' ); ?>]
-								<?php } else {
-									esc_html_e( '&#8212;', 'paid-memberships-pro' );
-								}
-							?>
-						</td>
-						<td><?php echo pmpro_formatPrice( $invoice->total ); ?></td>
-						<td><?php 
-							if ( empty( $invoice->code_id ) ) {
-								esc_html_e( '&#8212;', 'paid-memberships-pro' );
-							} else {
-								$discountQuery = $wpdb->prepare( "SELECT c.code FROM $wpdb->pmpro_discount_codes c WHERE c.id = %d LIMIT 1", $invoice->code_id );
-								$discount_code = $wpdb->get_row( $discountQuery );
-								echo '<a href="admin.php?page=pmpro-discountcodes&edit=' . esc_attr( $invoice->code_id ). '">'. esc_attr( $discount_code->code ) . '</a>';
-							}
-						?></td>
-						<td>
-							<?php
-								if ( empty( $invoice->status ) ) {
-									esc_html_e( '&#8212;', 'paid-memberships-pro' );
-								} else { ?>
-									<span class="pmpro_order-status pmpro_order-status-<?php esc_attr_e( $invoice->status ); ?>">
-										<?php if ( in_array( $invoice->status, array( 'success', 'cancelled' ) ) ) {
-											esc_html_e( 'Paid', 'paid-memberships-pro' );
-										} else {
-											esc_html_e( ucwords( $invoice->status ) );
-										} ?>
-									</span>
+							<tr>
+								<td>
 									<?php
-								}
-							?>
-						</td>
-						<?php do_action( 'pmpromh_orders_extra_cols_body', $invoice ); ?>
-					</tr>
-					<?php
-				}
-			?>
-			</tbody>
-			</table>
-		<?php } else { ?>
-            <table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tbody>
-                    <tr>
-                        <td><?php esc_html_e( 'No membership orders found.', 'paid-memberships-pro' ); ?></td>
-                    </tr>
-                </tbody>
-            </table>
-		<?php } ?>
-		</div> <!-- end #member-history-invoices -->
-		<?php
-			// Build the selectors for the subscription history list based on history count.
-			$subscriptions_classes = array();
-			$subscriptions_classes[] = "widgets-holder-wrap";
-			if ( ! empty( $subscriptions ) && count( $subscriptions ) > 2 ) {
-				$subscriptions_classes[] = "pmpro_scrollable";
-			}
-			$subscriptions_class = implode( ' ', array_unique( $subscriptions_classes ) );
-		?>
-		<div id="member-history-subscriptions" class="<?php echo esc_attr( $subscriptions_class ); ?>" style="display: none;">
-		<?php if ( $subscriptions ) { ?>
-			<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Date', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Subscription Transaction ID', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Gateway', 'paid-memberships-pro' ); ?>
-					<th><?php esc_html_e( 'Gateway Environment', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Next Payment Date', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Ended', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-			<?php
-				foreach ( $subscriptions as $subscription ) { 
-					$level = pmpro_getLevel( $subscription->membership_level_id );
+										echo esc_html( sprintf(
+											// translators: %1$s is the date and %2$s is the time.
+											__( '%1$s at %2$s', 'paid-memberships-pro' ),
+											esc_html( date_i18n( get_option( 'date_format' ), $invoice->timestamp ) ),
+											esc_html( date_i18n( get_option( 'time_format' ), $invoice->timestamp ) )
+										) );
+									?>
+								</td>
+								<td class="order_code column-order_code has-row-actions">
+									<strong><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'pmpro-orders', 'order' => $invoice->id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $invoice->code ); ?></a></strong>
+									<div class="row-actions">
+										<span class="id">
+											<?php echo sprintf(
+												// translators: %s is the Order ID.
+												__( 'ID: %s', 'paid-memberships-pro' ),
+												esc_attr( $invoice->id )
+											); ?>
+										</span> |
+										<span class="edit">
+											<a title="<?php esc_attr_e( 'Edit', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( add_query_arg( array( 'page' => 'pmpro-orders', 'order' => $invoice->id ), admin_url('admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'paid-memberships-pro' ); ?></a>
+										</span> |
+										<span class="print">
+											<a target="_blank" title="<?php esc_attr_e( 'Print', 'paid-memberships-pro' ); ?>" href="<?php echo esc_url( add_query_arg( array( 'action' => 'pmpro_orders_print_view', 'order' => $invoice->id ), admin_url('admin-ajax.php' ) ) ); ?>"><?php esc_html_e( 'Print', 'paid-memberships-pro' ); ?></a>
+										</span>
+										<?php if ( function_exists( 'pmpro_add_email_order_modal' ) ) { ?>
+											 |
+											<span class="email">
+												<a title="<?php esc_attr_e( 'Email', 'paid-memberships-pro' ); ?>" href="#TB_inline?width=600&height=200&inlineId=email_invoice" class="thickbox email_link" data-order="<?php echo esc_attr( $invoice->id ); ?>"><?php esc_html_e( 'Email', 'paid-memberships-pro' ); ?></a>
+											</span>
+										<?php } ?>
+									</div> <!-- end .row-actions -->
+								</td>
+								<td>
+									<?php
+										if ( ! empty( $level ) ) {
+											echo esc_html( $level->name );
+										} elseif ( $invoice->membership_id > 0 ) { ?>
+											[<?php esc_html_e( 'deleted', 'paid-memberships-pro' ); ?>]
+										<?php } else {
+											esc_html_e( '&#8212;', 'paid-memberships-pro' );
+										}
+									?>
+								</td>
+								<td><?php echo pmpro_formatPrice( $invoice->total ); ?></td>
+								<td><?php 
+									if ( empty( $invoice->code_id ) ) {
+										esc_html_e( '&#8212;', 'paid-memberships-pro' );
+									} else {
+										$discountQuery = $wpdb->prepare( "SELECT c.code FROM $wpdb->pmpro_discount_codes c WHERE c.id = %d LIMIT 1", $invoice->code_id );
+										$discount_code = $wpdb->get_row( $discountQuery );
+										echo '<a href="admin.php?page=pmpro-discountcodes&edit=' . esc_attr( $invoice->code_id ). '">'. esc_attr( $discount_code->code ) . '</a>';
+									}
+								?></td>
+								<td>
+									<?php
+										if ( empty( $invoice->status ) ) {
+											esc_html_e( '&#8212;', 'paid-memberships-pro' );
+										} else { ?>
+											<span class="pmpro_order-status pmpro_order-status-<?php esc_attr_e( $invoice->status ); ?>">
+												<?php if ( in_array( $invoice->status, array( 'success', 'cancelled' ) ) ) {
+													esc_html_e( 'Paid', 'paid-memberships-pro' );
+												} else {
+													esc_html_e( ucwords( $invoice->status ) );
+												} ?>
+											</span>
+											<?php
+										}
+									?>
+								</td>
+								<?php do_action( 'pmpromh_orders_extra_cols_body', $invoice ); ?>
+							</tr>
+							<?php
+						}
 					?>
-					<tr>
-						<td><?php echo esc_html( $subscription->startdate ); ?></td>
-						<td><a href="<?php echo ( esc_url( add_query_arg( array( 'page' => 'pmpro-subscriptions', 'id' => $subscription->id ), admin_url('admin.php' ) ) ) ); ?>"><?php echo esc_html( $subscription->subscription_transaction_id ); ?></a></td>
-						<td><?php if ( ! empty( $level ) ) { echo esc_html( $level->name ); } else { esc_html_e( 'N/A', 'paid-memberships-pro'); } ?></td>
-						<td><?php echo esc_html( $subscription->gateway ); ?>
-						<td><?php echo esc_html( $subscription->gateway_environment ); ?>
-						<td><?php echo esc_html( $subscription->next_payment_date ); ?>
-						<td><?php echo esc_html( $subscription->enddate ); ?>
-						<td><?php echo esc_html( $subscription->status ); ?>
-					</tr>
+					</tbody>
+					</table>
+				<?php } else { ?>
+					<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
+						<tbody>
+							<tr>
+								<td><?php esc_html_e( 'No membership orders found.', 'paid-memberships-pro' ); ?></td>
+							</tr>
+						</tbody>
+					</table>
+				<?php } ?>
+				</div> <!-- end #member-history-invoices -->
+				<?php
+					// Build the selectors for the subscription history list based on history count.
+					$subscriptions_classes = array();
+					$subscriptions_classes[] = "widgets-holder-wrap";
+					if ( ! empty( $subscriptions ) && count( $subscriptions ) > 2 ) {
+						$subscriptions_classes[] = "pmpro_scrollable";
+					}
+					$subscriptions_class = implode( ' ', array_unique( $subscriptions_classes ) );
+				?>
+				<div id="member-history-subscriptions" class="<?php echo esc_attr( $subscriptions_class ); ?>" style="display: none;">
+				<?php if ( $subscriptions ) { ?>
+					<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Date', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Subscription Transaction ID', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Gateway', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Gateway Environment', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Next Payment Date', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Ended', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
 					<?php
-				}
-			?>
-			</tbody>
-			</table>
-			<?php } else { 
-				esc_html_e( 'No subscriptions found.', 'paid-memberships-pro' );
-			} ?>
-		</div>
-		<?php
-			// Build the selectors for the membership levels history list based on history count.
-			$levelshistory_classes = array();
-			$levelshistory_classes[] = "widgets-holder-wrap";
-			if ( ! empty( $levelshistory ) && count( $levelshistory ) > 4 ) {
-				$levelshistory_classes[] = "pmpro_scrollable";
-			}
-			$levelshistory_class = implode( ' ', array_unique( $levelshistory_classes ) );
-		?>
-		<div id="member-history-memberships" class="<?php echo esc_attr( $levelshistory_class ); ?>" style="display: none;">
-		<?php if ( $levelshistory ) { ?>
-			<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Level ID', 'paid-memberships-pro' ); ?>
-					<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Start Date', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Date Modified', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'End Date', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Level Cost', 'paid-memberships-pro' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
-					<?php do_action( 'pmpromh_member_history_extra_cols_header' ); ?>
-				</tr>
-			</thead>
-			<tbody>
-			<?php
-				foreach ( $levelshistory as $levelhistory ) {
-					$level = pmpro_getLevel( $levelhistory->membership_id );
-
-					if ( $levelhistory->enddate === null || $levelhistory->enddate == '0000-00-00 00:00:00' ) {
-						$levelhistory->enddate = __( 'Never', 'paid-memberships-pro' );
-					} else {
-						$levelhistory->enddate = date_i18n( get_option( 'date_format'), strtotime( $levelhistory->enddate ) );
-					} ?>
-					<tr>
-						<td><?php if ( ! empty( $level ) ) { echo $level->id; } else { esc_html_e( 'N/A', 'paid-memberships-pro' ); } ?></td>
-						<td><?php if ( ! empty( $level ) ) { echo $level->name; } else { esc_html_e( 'N/A', 'paid-memberships-pro' ); } ?></td>
-						<td><?php echo ( $levelhistory->startdate === '0000-00-00 00:00:00' ? __('N/A', 'paid-memberships-pro') : date_i18n( get_option( 'date_format' ), strtotime( $levelhistory->startdate ) ) ); ?></td>
-						<td><?php echo date_i18n( get_option( 'date_format'), strtotime( $levelhistory->modified ) ); ?></td>
-						<td><?php echo esc_html( $levelhistory->enddate ); ?></td>
-						<td><?php echo pmpro_getLevelCost( $levelhistory, true, true ); ?></td>
-						<td>
-							<?php 
-								if ( empty( $levelhistory->status ) ) {
-									echo '-';
-								} else {
-									echo esc_html( $levelhistory->status ); 
-								}
+						foreach ( $subscriptions as $subscription ) { 
+							$level = pmpro_getLevel( $subscription->membership_level_id );
 							?>
-						</td>
-						<?php do_action( 'pmpromh_member_history_extra_cols_body', $user, $level ); ?>
-					</tr>
+							<tr>
+								<td><?php echo esc_html( $subscription->startdate ); ?></td>
+								<td><a href="<?php echo ( esc_url( add_query_arg( array( 'page' => 'pmpro-subscriptions', 'id' => $subscription->id ), admin_url('admin.php' ) ) ) ); ?>"><?php echo esc_html( $subscription->subscription_transaction_id ); ?></a></td>
+								<td><?php if ( ! empty( $level ) ) { echo esc_html( $level->name ); } else { esc_html_e( 'N/A', 'paid-memberships-pro'); } ?></td>
+								<td><?php echo esc_html( $subscription->gateway ); ?></td>
+								<td><?php echo esc_html( $subscription->gateway_environment ); ?></td>
+								<td><?php echo esc_html( $subscription->next_payment_date ); ?></td>
+								<td><?php echo ( $subscription->enddate === '0000-00-00 00:00:00' ? __('&#8212', 'paid-memberships-pro') : date_i18n( get_option( 'date_format' ), strtotime( $subscription->enddate ) ) ); ?></td>
+								<td><?php echo esc_html( $subscription->status ); ?></td>
+							</tr>
+							<?php
+						}
+					?>
+					</tbody>
+					</table>
+					<?php } else { 
+						esc_html_e( 'No subscriptions found.', 'paid-memberships-pro' );
+					} ?>
+				</div>
+				<?php
+					// Build the selectors for the membership levels history list based on history count.
+					$levelshistory_classes = array();
+					$levelshistory_classes[] = "widgets-holder-wrap";
+					if ( ! empty( $levelshistory ) && count( $levelshistory ) > 4 ) {
+						$levelshistory_classes[] = "pmpro_scrollable";
+					}
+					$levelshistory_class = implode( ' ', array_unique( $levelshistory_classes ) );
+				?>
+				<div id="member-history-memberships" class="<?php echo esc_attr( $levelshistory_class ); ?>" style="display: none;">
+				<?php if ( $levelshistory ) { ?>
+					<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Level ID', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Level', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Start Date', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Date Modified', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'End Date', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Level Cost', 'paid-memberships-pro' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></th>
+							<?php do_action( 'pmpromh_member_history_extra_cols_header' ); ?>
+						</tr>
+					</thead>
+					<tbody>
 					<?php
-				}
-			?>
-			</tbody>
-			</table>
-			<?php } else { ?>
-                <table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tbody>
-                        <tr>
-                            <td><?php esc_html_e( 'No membership history found.', 'paid-memberships-pro'); ?></td>
-                        </tr>
-                    </tbody>
-                </table>
-			<?php } ?>
-		</div> <!-- end #member-history-memberships -->
+						foreach ( $levelshistory as $levelhistory ) {
+							$level = pmpro_getLevel( $levelhistory->membership_id );
+
+							if ( $levelhistory->enddate === null || $levelhistory->enddate == '0000-00-00 00:00:00' ) {
+								$levelhistory->enddate = __( 'Never', 'paid-memberships-pro' );
+							} else {
+								$levelhistory->enddate = date_i18n( get_option( 'date_format'), strtotime( $levelhistory->enddate ) );
+							} ?>
+							<tr>
+								<td><?php if ( ! empty( $level ) ) { echo $level->id; } else { esc_html_e( 'N/A', 'paid-memberships-pro' ); } ?></td>
+								<td><?php if ( ! empty( $level ) ) { echo $level->name; } else { esc_html_e( 'N/A', 'paid-memberships-pro' ); } ?></td>
+								<td><?php echo ( $levelhistory->startdate === '0000-00-00 00:00:00' ? __('N/A', 'paid-memberships-pro') : date_i18n( get_option( 'date_format' ), strtotime( $levelhistory->startdate ) ) ); ?></td>
+								<td><?php echo date_i18n( get_option( 'date_format'), strtotime( $levelhistory->modified ) ); ?></td>
+								<td><?php echo esc_html( $levelhistory->enddate ); ?></td>
+								<td><?php echo pmpro_getLevelCost( $levelhistory, true, true ); ?></td>
+								<td>
+									<?php 
+										if ( empty( $levelhistory->status ) ) {
+											echo '-';
+										} else {
+											echo esc_html( $levelhistory->status ); 
+										}
+									?>
+								</td>
+								<?php do_action( 'pmpromh_member_history_extra_cols_body', $user, $level ); ?>
+							</tr>
+							<?php
+						}
+					?>
+					</tbody>
+					</table>
+					<?php } else { ?>
+						<table class="wp-list-table widefat striped fixed" width="100%" cellpadding="0" cellspacing="0" border="0">
+							<tbody>
+								<tr>
+									<td><?php esc_html_e( 'No membership history found.', 'paid-memberships-pro'); ?></td>
+								</tr>
+							</tbody>
+						</table>
+					<?php } ?>
+				</div> <!-- end #member-history-memberships -->
+			</div>
+		</div> <!-- end Member History section -->
 		<script>
 			//tabs
 			jQuery(document).ready(function() {
