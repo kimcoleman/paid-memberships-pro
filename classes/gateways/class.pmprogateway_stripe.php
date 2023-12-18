@@ -4234,9 +4234,13 @@ class PMProGateway_stripe extends PMProGateway {
 		// countries, we should set the percentage to 0. This is a temporary fix until we
 		// have a better solution or until all countries allow us to use application fees.
 		$countries_to_disable_application_fees = array(
+			'BR', // Brazil.
+			'ID', // Indonesia.
 			'IN', // India.
 			'MX', // Mexico.
 			'MY', // Malaysia.
+			'PH', // Philippines.
+			'TH', // Thailand.
 		);
 		if ( in_array( self::get_account_country(), $countries_to_disable_application_fees ) ) {
 			return 0;
