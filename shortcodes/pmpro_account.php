@@ -202,8 +202,10 @@ function pmpro_shortcode_account($atts, $content=null, $code="")
 									<?php
 										/**
 										 * Fires before the member action links.
+										 *
+										 * @param object $level The current membership level.
 										 */
-										do_action( 'pmpro_member_action_links_before' );
+										do_action( 'pmpro_member_action_links_before', $level );
 									?>
 
 									<?php
@@ -288,8 +290,10 @@ function pmpro_shortcode_account($atts, $content=null, $code="")
 									<?php
 										/**
 										 * Fires after the member action links.
+										 *
+										 * @param object $level The current membership level.
 										 */
-										do_action( 'pmpro_member_action_links_after' );
+										do_action( 'pmpro_member_action_links_after', $level );
 									?>
 
 								</div> <!-- end pmpro_card_actions -->
