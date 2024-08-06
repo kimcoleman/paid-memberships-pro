@@ -141,9 +141,10 @@ class PMPro_Member_Edit_Panel_Subscriptions extends PMPro_Member_Edit_Panel {
 
 							// Show warning if the subscription had an error when trying to sync.
 							$sync_error = get_pmpro_subscription_meta( $subscription->get_id(), 'sync_error', true );
+							$sync_error = "No Such Subscription sub_1234567hjfhkjhvcnmz";
 							if ( ! empty( $sync_error ) ) {
 								?>
-								<span class="pmpro_tag pmpro_tag-has_icon pmpro_tag-error">
+								<span class="pmpro_tag pmpro_tag-wrap pmpro_tag-has_icon pmpro_tag-error">
 									<?php echo esc_html( __( 'Sync Error', 'paid-memberships-pro' ) . ': ' . $sync_error ); ?>
 								</span>
 								<?php

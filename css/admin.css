@@ -562,6 +562,11 @@ body[class*="memberships_page_pmpro-"] {
 	content: "\f111";
 }
 
+.pmpro_tag-wrap {
+	text-wrap: wrap;
+	word-break: break-all;
+}
+
 /**
  * Checkbox Boxes
  *
