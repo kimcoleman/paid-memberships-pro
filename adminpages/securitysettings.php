@@ -90,6 +90,11 @@
 		<?php wp_nonce_field( 'savesettings', 'pmpro_securitysettings_nonce' );?>
 		<hr class="wp-header-end">
         <h1><?php esc_html_e( 'Security Settings', 'paid-memberships-pro' );?></h1>
+		<p><?php
+			$security_settings_link = '<a title="' . esc_attr__( 'Paid Memberships Pro - Security Settings', 'paid-memberships-pro' ) . '" target="_blank" rel="nofollow noopener" href="https://www.paidmembershipspro.com/documentation/admin/security-settings/?utm_source=plugin&utm_medium=pmpro-securitysettings&utm_campaign=documentation&utm_content=security-settings">' . esc_html__( 'Security Settings', 'paid-memberships-pro' ) . '</a>';
+			// translators: %s: Link to Security Settings doc.
+			printf( esc_html__('Learn more about %s.', 'paid-memberships-pro' ), $security_settings_link ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		?></p>
 		<div class="pmpro_section" data-visibility="shown" data-activated="true">
 			<div class="pmpro_section_toggle">
 				<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">
@@ -182,11 +187,6 @@
 				</button>
 			</div>
 			<div class="pmpro_section_inside">
-				<p><?php			
-					$ssl_settings_link = '<a title="' . esc_attr__( 'Paid Memberships Pro - SSL Settings', 'paid-memberships-pro' ) . '" target="_blank" rel="nofollow noopener" href="https://www.paidmembershipspro.com/documentation/initial-plugin-setup/ssl/?utm_source=plugin&utm_medium=pmpro-paymentsettings&utm_campaign=documentation&utm_content=ssl&utm_term=link1">' . esc_html__( 'SSL', 'paid-memberships-pro' ) . '</a>';
-					// translators: %s: Link to SSL Settings doc.
-					printf( esc_html__('Learn more about %s.', 'paid-memberships-pro' ), $ssl_settings_link ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				?></p>
 				<table class="form-table">
 				<tbody>
 					<tr>
