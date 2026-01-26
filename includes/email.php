@@ -202,11 +202,46 @@ function pmpro_email_templates_save_template_data() {
 	$template = sanitize_text_field( $_REQUEST['template'] );
 	$subject = isset( $_REQUEST['subject'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['subject'] ) ) : '';
 	$body = pmpro_kses( wp_unslash( $_REQUEST['body'] ), 'email' );	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$disabled = isset( $_REQUEST['disabled'] ) ? sanitize_text_field( $_REQUEST['disabled'] ) : '';
 
-	//update this template's settings
-	update_option( 'pmpro_email_' . $template . '_subject', $subject );
-	update_option( 'pmpro_email_' . $template . '_body', $body );
-	delete_transient( 'pmproet_' . $template );
+	/**
+	 * Action to handle saving email template data.
+	 *
+	 * Allows Add-Ons (like Advanced Emails) to intercept and handle saves
+	 * for level-specific overrides instead of the default save behavior.
+	 *
+	 * @since 3.5
+	 *
+	 * @param string $template The template slug being saved.
+	 * @param array  $data     The data being saved (subject, body, disabled).
+	 */
+	$save_data = array(
+		'subject'  => $subject,
+		'body'     => $body,
+		'disabled' => $disabled,
+	);
+
+	/**
+	 * Filter to determine if the save was handled by an Add-On.
+	 *
+	 * If an Add-On returns true, the default save behavior is skipped.
+	 *
+	 * @since 3.5
+	 *
+	 * @param bool   $handled  Whether the save was handled by an Add-On.
+	 * @param string $template The template slug being saved.
+	 * @param array  $data     The data being saved.
+	 */
+	$handled = apply_filters( 'pmpro_emailtemplates_save_template_data', false, $template, $save_data );
+
+	// If not handled by an Add-On, use default save behavior.
+	if ( ! $handled ) {
+		//update this template's settings
+		update_option( 'pmpro_email_' . $template . '_subject', $subject );
+		update_option( 'pmpro_email_' . $template . '_body', $body );
+		delete_transient( 'pmproet_' . $template );
+	}
+
 	esc_html_e( 'Template Saved', 'paid-memberships-pro' );
 
 	exit;
@@ -259,7 +294,25 @@ function pmpro_email_templates_disable_template() {
 
 	$template = sanitize_text_field( $_REQUEST['template'] );
 	$disabled = sanitize_text_field( $_REQUEST['disabled'] );
-	$response['result'] = update_option('pmpro_email_' . $template . '_disabled', $disabled );
+
+	/**
+	 * Filter to determine if the disable was handled by an Add-On.
+	 *
+	 * If an Add-On returns true, the default disable behavior is skipped.
+	 *
+	 * @since 3.5
+	 *
+	 * @param bool   $handled  Whether the disable was handled by an Add-On.
+	 * @param string $template The template slug.
+	 * @param string $disabled Whether the template is being disabled ('true' or 'false').
+	 */
+	$handled = apply_filters( 'pmpro_emailtemplates_disable_template', false, $template, $disabled );
+
+	if ( ! $handled ) {
+		$response['result'] = update_option('pmpro_email_' . $template . '_disabled', $disabled );
+	} else {
+		$response['result'] = true;
+	}
 	$response['status'] = $disabled;
 	echo json_encode($response);
 	exit;

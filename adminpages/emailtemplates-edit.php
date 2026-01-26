@@ -16,6 +16,19 @@
 	$template_data['description'] = $pmpro_email_templates_defaults[$edit]['description'];
 	$template_data['help_text'] = $pmpro_email_templates_defaults[$edit]['help_text'];
 
+	/**
+	 * Filter the template data being loaded for editing.
+	 *
+	 * Allows Add-Ons (like Advanced Emails) to modify the template data
+	 * based on context like level_id query parameter.
+	 *
+	 * @since 3.5
+	 *
+	 * @param array  $template_data The template data array.
+	 * @param string $edit          The template slug being edited.
+	 */
+	$template_data = apply_filters( 'pmpro_emailtemplates_load_template_data', $template_data, $edit );
+
 	// Email variables.
 	$email_variables = [
 		esc_html__( 'General Settings / Membership Info', 'paid-memberships-pro' ) => [
@@ -81,6 +94,18 @@
 		<input id="edit" name="edit" type="hidden" value="<?php echo esc_attr( $edit ); ?>" />
 		<input type="hidden" name="action" value="save_emailtemplate" />
 		<?php wp_nonce_field('savesettings', 'pmpro_emailsettings_nonce');?>
+		<?php
+		/**
+		 * Action to add hidden fields to the email template edit form.
+		 *
+		 * Used by Advanced Emails Add-On to add the level_id hidden field.
+		 *
+		 * @since 3.5
+		 *
+		 * @param string $edit The template slug being edited.
+		 */
+		do_action( 'pmpro_emailtemplates_edit_form_hidden_fields', $edit );
+		?>
 		<h1 class="wp-heading-inline">
 		<?php
 			echo sprintf(
@@ -105,6 +130,18 @@
 									<p class="description"><?php echo esc_html( $template_data['help_text'] ); ?></p>
 								</td>
 							</tr>
+							<?php
+							/**
+							 * Action to add content after the Template row in the email template edit form.
+							 *
+							 * Used by Advanced Emails Add-On to add the membership level override dropdown.
+							 *
+							 * @since 3.5
+							 *
+							 * @param string $edit The template slug being edited.
+							 */
+							do_action( 'pmpro_emailtemplates_edit_after_template_row', $edit );
+							?>
 							<tr>
 								<th scope="row" valign="top"><label for="pmpro_email_template_status"><?php esc_html_e( 'Status', 'paid-memberships-pro' ); ?></label></th>
 								<td>
@@ -170,6 +207,19 @@
 						</table>
 					</div> <!-- end pmpro_section_inside -->
 				</div> <!-- end pmpro_section -->
+				<?php
+				/**
+				 * Action to add content before the Variable Reference section.
+				 *
+				 * Used by Advanced Emails Add-On to display level-specific overrides table.
+				 *
+				 * @since 3.5
+				 *
+				 * @param string $edit          The template slug being edited.
+				 * @param array  $template_data The template data array.
+				 */
+				do_action( 'pmpro_emailtemplates_edit_before_variable_reference', $edit, $template_data );
+				?>
 				<div id="email-variable-reference" class="pmpro_section" data-visibility="shown" data-activated="true">
 					<div class="pmpro_section_toggle">
 						<button class="pmpro_section-toggle-button" type="button" aria-expanded="true">

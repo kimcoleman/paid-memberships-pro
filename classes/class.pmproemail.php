@@ -76,7 +76,7 @@
 		 * 
 		 */
 		function sendEmail($email = NULL, $from = NULL, $fromname = NULL, $subject = NULL, $template = NULL, $data = NULL)
-		{			
+		{
 			//if values were passed
 			if($email)
 				$this->email = $email;
@@ -91,11 +91,98 @@
 			if($data)
 				$this->data = $data;
 
-			// If email is disabled don't send it.
-			// Note option may have 'false' stored as a string.
-			$template_disabled = get_option( 'pmpro_email_' . $this->template . '_disabled' );
-			if ( ! empty( $template_disabled ) && $template_disabled !== 'false' ) {
+			/**
+			 * Build context for the pmpro_resolve_email_template filter.
+			 * This allows Add-Ons to override email template settings based on context.
+			 *
+			 * @since 3.5
+			 */
+			$context = array(
+				'template'      => $this->template,
+				'email'         => $this->email,
+				'data'          => is_array( $this->data ) ? $this->data : array(),
+				'membership_id' => null,
+				'user_id'       => null,
+				'order_id'      => null,
+			);
+
+			// Extract membership_id from data if available.
+			if ( is_array( $this->data ) && ! empty( $this->data['membership_id'] ) ) {
+				$context['membership_id'] = intval( $this->data['membership_id'] );
+			}
+
+			// Extract order_id from data if available.
+			if ( is_array( $this->data ) && ! empty( $this->data['order_id'] ) ) {
+				$context['order_id'] = $this->data['order_id'];
+			}
+
+			// Extract user_id from data or infer from email.
+			if ( is_array( $this->data ) && ! empty( $this->data['user_id'] ) ) {
+				$context['user_id'] = intval( $this->data['user_id'] );
+			} elseif ( ! empty( $this->email ) ) {
+				$email_user = get_user_by( 'email', $this->email );
+				if ( $email_user ) {
+					$context['user_id'] = $email_user->ID;
+				}
+			}
+
+			/**
+			 * Filter to resolve email template overrides.
+			 *
+			 * Allows Add-Ons (like Advanced Emails) to override template settings
+			 * such as disabled status, subject, body, recipient, cc, and bcc
+			 * based on context like membership level.
+			 *
+			 * @since 3.5
+			 *
+			 * @param array $resolved {
+			 *     The resolved template settings. All values default to null (inherit default behavior).
+			 *
+			 *     @type bool|null   $disabled        Whether the email is disabled.
+			 *     @type string|null $subject         Override subject line.
+			 *     @type string|null $body            Override body content.
+			 *     @type string|null $recipient_email Override recipient email.
+			 *     @type string|null $cc              CC email addresses.
+			 *     @type string|null $bcc             BCC email addresses.
+			 *     @type string      $source          Source of the override (e.g., 'advanced_emails').
+			 * }
+			 * @param array     $context {
+			 *     Context data for the email being sent.
+			 *
+			 *     @type string     $template      The template slug.
+			 *     @type string     $email         The recipient email.
+			 *     @type array      $data          The email data array.
+			 *     @type int|null   $membership_id The membership level ID if available.
+			 *     @type int|null   $user_id       The user ID if available.
+			 *     @type mixed|null $order_id      The order ID if available.
+			 * }
+			 * @param PMProEmail $email_obj The PMProEmail object.
+			 */
+			$resolved = apply_filters( 'pmpro_resolve_email_template', array(
+				'disabled'        => null,
+				'subject'         => null,
+				'body'            => null,
+				'recipient_email' => null,
+				'cc'              => null,
+				'bcc'             => null,
+				'source'          => 'default',
+			), $context, $this );
+
+			// Check if disabled via resolved filter or default settings.
+			// The filter can explicitly set disabled to true/false to override the default.
+			if ( $resolved['disabled'] === true ) {
+				// Explicitly disabled by an override - don't send.
 				return false;
+			} elseif ( $resolved['disabled'] === false ) {
+				// Explicitly enabled by an override - continue even if default is disabled.
+				// This allows level-specific overrides to "re-enable" a globally disabled template.
+			} else {
+				// No override or override didn't set disabled - check the default setting.
+				// Note option may have 'false' stored as a string.
+				$template_disabled = get_option( 'pmpro_email_' . $this->template . '_disabled' );
+				if ( ! empty( $template_disabled ) && $template_disabled !== 'false' ) {
+					return false;
+				}
 			}
 
 			//default values
@@ -118,6 +205,11 @@
 				$this->subject = $template_subject;
 			} elseif ( empty( $this->subject ) ) {
 				$this->subject = ! empty( $pmpro_email_templates_defaults[$this->template]['subject'] ) ? sanitize_text_field( $pmpro_email_templates_defaults[$this->template]['subject'] ) : sprintf(__("An Email From %s", 'paid-memberships-pro' ), get_option("blogname"));
+			}
+
+			// Apply resolved subject override if set.
+			if ( ! empty( $resolved['subject'] ) ) {
+				$this->subject = $resolved['subject'];
 			}
 
 			//decode the subject line in case there are apostrophes/etc in it
@@ -154,6 +246,11 @@
 				$this->body = $pmpro_email_templates_defaults[$this->template]['body'];									//default template in plugin
 			elseif(!empty($this->data) && !empty($this->data['body']))
 				$this->body = $this->data['body'];																						//data passed in
+
+			// Apply resolved body override if set.
+			if ( ! empty( $resolved['body'] ) ) {
+				$this->body = $resolved['body'];
+			}
 
 			//if data is a string, assume we mean to replace !!body!! with it
 			if(is_string($this->data))
@@ -251,7 +348,22 @@
 					}
 				}
 			}
-			
+
+			// Apply resolved recipient override if set.
+			if ( ! empty( $resolved['recipient_email'] ) ) {
+				$this->email = $resolved['recipient_email'];
+			}
+
+			// Apply resolved CC header if set.
+			if ( ! empty( $resolved['cc'] ) ) {
+				$this->headers[] = 'Cc: ' . $resolved['cc'];
+			}
+
+			// Apply resolved BCC header if set.
+			if ( ! empty( $resolved['bcc'] ) ) {
+				$this->headers[] = 'Bcc: ' . $resolved['bcc'];
+			}
+
 			return wp_mail($this->email,$this->subject,$this->body,$this->headers,$this->attachments);
 		}
 		
