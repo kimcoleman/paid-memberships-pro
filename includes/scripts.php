@@ -139,6 +139,18 @@ function pmpro_admin_enqueue_scripts() {
 		$level->formatted_description = apply_filters( 'pmpro_level_description', $level->description, $level );
         $all_levels_formatted_text[$level->id] = $level;
     }
+    // Build level groups data for JS.
+    $all_level_groups = array();
+    $groups_for_script = pmpro_get_level_groups_in_order();
+    foreach ( $groups_for_script as $group ) {
+        $group_level_ids = pmpro_get_level_ids_for_group( $group->id );
+        $all_level_groups[] = array(
+            'value'     => $group->id,
+            'label'     => $group->name,
+            'level_ids' => array_map( 'intval', $group_level_ids ),
+        );
+    }
+
     // Get HTML for empty field group.
     ob_start();
     pmpro_get_field_group_html();
@@ -155,6 +167,7 @@ function pmpro_admin_enqueue_scripts() {
 			'all_levels' => $all_levels,
 			'all_levels_formatted_text' => $all_levels_formatted_text,
 			'all_level_values_and_labels' => $all_level_values_and_labels,
+			'all_level_groups' => $all_level_groups,
 			'checkout_url' => pmpro_url( 'checkout' ),
 			'stripe_webhook_nonce' => wp_create_nonce( 'pmpro_stripe_webhook_nonce' ),
 			'user_fields_blank_group' => $empty_field_group_html,

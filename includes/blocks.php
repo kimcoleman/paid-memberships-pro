@@ -76,11 +76,24 @@ function pmpro_block_editor_assets() {
 			PMPRO_URL . '/blocks/build/sidebar/index.js',
 			array( 'wp-blocks', 'wp-element', 'wp-components', 'wp-i18n', 'wp-block-editor', 'wp-api-request', 'wp-plugins', 'wp-edit-post', 'wp-editor' )
 		);
+		// Build level groups data for the sidebar.
+		$sidebar_level_groups = array();
+		$groups_for_sidebar   = pmpro_get_level_groups_in_order();
+		foreach ( $groups_for_sidebar as $group ) {
+			$group_level_ids    = pmpro_get_level_ids_for_group( $group->id );
+			$sidebar_level_groups[] = array(
+				'value'     => $group->id,
+				'label'     => $group->name,
+				'level_ids' => array_map( 'intval', $group_level_ids ),
+			);
+		}
+
 		wp_localize_script(
 			'pmpro-sidebar-editor-script',
 			'pmpro_block_editor_sidebar',
 			array(
-				'post_id' => get_the_ID(),
+				'post_id'      => get_the_ID(),
+				'level_groups' => $sidebar_level_groups,
 			)
 		);
 		wp_enqueue_script( 'pmpro-sidebar-editor-script' );
@@ -160,6 +173,16 @@ function pmpro_apply_block_visibility( $attributes, $content ) {
 			case 'logged_in':
 				$levels_to_check = 'L'; // Logged in users.
 				break;
+			case 'level_group':
+				// Resolve group IDs to level IDs.
+				$level_group_ids = ! empty( $attributes['level_groups'] ) ? $attributes['level_groups'] : array();
+				$levels_to_check = array();
+				foreach ( $level_group_ids as $group_id ) {
+					$group_level_ids = pmpro_get_level_ids_for_group( intval( $group_id ) );
+					$levels_to_check = array_merge( $levels_to_check, $group_level_ids );
+				}
+				$levels_to_check = array_unique( $levels_to_check );
+				break;
 		}
 
 		$should_show = empty( $attributes['invert_restrictions'] ) ? pmpro_hasMembershipLevel( $levels_to_check ) : ! pmpro_hasMembershipLevel( $levels_to_check );
@@ -195,9 +218,10 @@ function pmpro_filter_core_blocks( $block_content, $block ) {
 
 	// We need defaults because WP doesn't store defaults in the DB.
 	$attributes = wp_parse_args( $block['attrs'], array(
-		'segment' => 'all',
-		'levels' => array(),
-		'show_noaccess' => '0',
+		'segment'             => 'all',
+		'levels'              => array(),
+		'level_groups'        => array(),
+		'show_noaccess'       => '0',
 		'invert_restrictions' => '0',
 	) );
 	return pmpro_apply_block_visibility( $attributes, $block_content );
@@ -231,6 +255,10 @@ function pmpro_block_type_metadata( $metadata ) {
 		'default' => 'all',
 	);
 	$metadata['attributes']['levels'] = array(
+		'type' => 'array',
+		'default' => array(),
+	);
+	$metadata['attributes']['level_groups'] = array(
 		'type' => 'array',
 		'default' => array(),
 	);

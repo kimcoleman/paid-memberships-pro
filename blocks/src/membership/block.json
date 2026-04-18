@@ -23,6 +23,10 @@
 			"type": "array",
 			"default":[]
 		},
+		"level_groups": {
+			"type": "array",
+			"default":[]
+		},
 		"show_noaccess": {
 			"type": "string",
 			"default": "0"

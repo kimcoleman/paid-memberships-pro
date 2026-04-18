@@ -13,12 +13,12 @@ import { ToggleControl, CheckboxControl, PanelBody, SelectControl, Button, __exp
 import { InspectorControls } from '@wordpress/block-editor';
 
 export default function ContentVisibilityControls (props) {
-	const { attributes: { visibilityBlockEnabled, invert_restrictions, segment, levels, show_noaccess }, setAttributes } = props;
+	const { attributes: { visibilityBlockEnabled, invert_restrictions, segment, levels, level_groups, show_noaccess }, setAttributes } = props;
 
 	// Helper function to handle changes to the segment attribute.
-	const  handleSegmentChange = (newSegment) => {
-		// Set the segment attribute and clear the levels array.
-		setAttributes({ segment: newSegment, levels: [] });
+	const handleSegmentChange = (newSegment) => {
+		// Set the segment attribute and clear the levels and level_groups arrays.
+		setAttributes({ segment: newSegment, levels: [], level_groups: [] });
 	}
 	// Helper function to select/deselect all levels.
 	const selectAllLevels = (selectAll) => {
@@ -53,6 +53,27 @@ export default function ContentVisibilityControls (props) {
 		];
 	});
 
+	// Build an array of checkboxes for each level group.
+	const groupCheckboxes = (pmpro.all_level_groups || []).map((group) => {
+		function setGroupAttribute(nowChecked) {
+			const currentGroups = level_groups || [];
+			if (nowChecked && !currentGroups.some((id) => id == group.value)) {
+				setAttributes({ level_groups: [...currentGroups, group.value + ''] });
+			} else if (!nowChecked && currentGroups.some((id) => id == group.value)) {
+				setAttributes({ level_groups: currentGroups.filter((id) => id != group.value) });
+			}
+		}
+		return [
+			<CheckboxControl
+				__nextHasNoMarginBottom
+				key={'group-' + group.value}
+				label={group.label}
+				checked={(level_groups || []).some((id) => id == group.value)}
+				onChange={setGroupAttribute}
+			/>
+		];
+	});
+
 	return (
 		<InspectorControls>
 			<PanelBody
@@ -70,7 +91,7 @@ export default function ContentVisibilityControls (props) {
 						checked={ visibilityBlockEnabled }
 					/>
 				}
-				
+
 				<div style={{display: visibilityBlockEnabled ? 'block' : 'none' }}>
 					<HStack>
 						{/* Button to toggle visibility to "show" mode */}
@@ -105,6 +126,7 @@ export default function ContentVisibilityControls (props) {
 							options={[
 								{ label: __( 'All Members', 'paid-memberships-pro' ), value: 'all' },
 								{ label: __( 'Specific Membership Levels', 'paid-memberships-pro' ), value: 'specific' },
+								{ label: __( 'By Level Group', 'paid-memberships-pro' ), value: 'level_group' },
 								{ label: __( 'Logged-In Users', 'paid-memberships-pro' ), value: 'logged_in' }
 							]}
 							onChange={(segment) => handleSegmentChange(segment) }
@@ -116,6 +138,12 @@ export default function ContentVisibilityControls (props) {
 							</p>
 							<div className="pmpro-block-inspector-scrollable">
 								{checkboxes}
+							</div>
+						</> }
+						{ segment=='level_group' && <>
+							<p><strong>{ __( 'Membership Groups', 'paid-memberships-pro' ) }</strong></p>
+							<div className="pmpro-block-inspector-scrollable">
+								{groupCheckboxes}
 							</div>
 						</> }
 						{ invert_restrictions=='0' && <>
@@ -135,4 +163,5 @@ export default function ContentVisibilityControls (props) {
 				</div>
 			</PanelBody>
 		</InspectorControls>
-)}
+	)
+}

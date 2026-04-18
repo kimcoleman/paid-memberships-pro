@@ -12,6 +12,7 @@ function pmpro_shortcode_membership($atts, $content=null, $code="")
 	extract(shortcode_atts(array(
 		'level' => NULL,
 		'levels' => NULL,
+		'level_group' => NULL,
 		'delay' => NULL,
 		'show_noaccess' => NULL
 	), $atts));
@@ -19,6 +20,14 @@ function pmpro_shortcode_membership($atts, $content=null, $code="")
 	//if levels is used instead of level
 	if(isset($levels) && !isset($level))
 		$level = $levels;
+
+	// if level_group is set and level/levels is not, resolve group to level IDs.
+	if ( ! isset( $level ) && isset( $level_group ) ) {
+		$group_level_ids = pmpro_get_level_ids_for_group( intval( $level_group ) );
+		if ( ! empty( $group_level_ids ) ) {
+			$level = implode( ',', $group_level_ids );
+		}
+	}
 	
 	global $wpdb, $current_user;
 
