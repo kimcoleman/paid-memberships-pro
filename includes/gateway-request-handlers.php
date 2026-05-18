@@ -285,9 +285,11 @@ function pmpro_handle_recurring_payment_failure_at_gateway( $order_data ) {
 	do_action( 'pmpro_subscription_payment_failed', $order );
 
 	// Some gateways can perform many retries in a short period of time. To avoid spamming the user/admin, we will only send one email per day.
-	// Check order meta for the last time we sent a failure email for this order.
-	$last_failure_email_sent = get_pmpro_membership_order_meta( $order->id, 'last_failure_email_sent', true );
-	if ( ! empty( $last_failure_email_sent ) && ( time() - intval( $last_failure_email_sent ) ) < 23 * HOUR_IN_SECONDS ) { // 23 hours to give some wiggle room for payments that are retried at the same time each day.
+	// Look at the most recent send recorded in track_failure_attempts to enforce a 23 hour throttle.
+	$last_email_sent_ts = pmpro_get_last_failure_email_sent_timestamp( $order->id );
+	if ( ! empty( $last_email_sent_ts ) && ( time() - $last_email_sent_ts ) < 23 * HOUR_IN_SECONDS ) { // 23 hours to give some wiggle room for payments that are retried at the same time each day.
+		// Record the throttled attempt so reports/templates can see it.
+		pmpro_record_failure_attempt( $order->id, false );
 		return 'Processed failed payment for user with id = ' . $user->ID . '. Subscription transaction id = ' . $subscription_transaction_id . '. Order id = ' . $order->id . '. Already sent failure email within the last 24 hours.';
 	}
 
@@ -299,10 +301,89 @@ function pmpro_handle_recurring_payment_failure_at_gateway( $order_data ) {
 	$pmproemail = new PMProEmail();
 	$pmproemail->sendBillingFailureAdminEmail(get_bloginfo("admin_email"), $order);
 
-	// Update order meta with the time we sent the failure email.
-	update_pmpro_membership_order_meta( $order->id, 'last_failure_email_sent', time() );
+	// Record the attempt and that an email was sent.
+	pmpro_record_failure_attempt( $order->id, true );
 
 	return 'Processed failed payment for user with id = ' . $user->ID . '. Subscription transaction id = ' . $subscription_transaction_id . '. Order id = ' . $order->id . '.';
+}
+
+/**
+ * Record a failed payment attempt on the pending order's meta.
+ *
+ * Appends an entry to the `track_failure_attempts` order meta array. Each entry is
+ * an associative array with a `timestamp` (MySQL datetime in site time) and an
+ * `email_sent` boolean. `email_sent` is true when we actually emailed the member
+ * during this attempt, and false when the send was suppressed by the 23-hour throttle.
+ *
+ * On the first write for an order, this helper seeds the array from the legacy
+ * `last_failure_email_sent` order meta so existing orders keep their history. The
+ * legacy meta is then deleted; new code reads from `track_failure_attempts`.
+ *
+ * @since TBD
+ *
+ * @param int  $order_id   The order ID to record against.
+ * @param bool $email_sent Whether the billing failure email was sent for this attempt.
+ */
+function pmpro_record_failure_attempt( $order_id, $email_sent ) {
+	if ( empty( $order_id ) ) {
+		return;
+	}
+
+	$attempts = get_pmpro_membership_order_meta( $order_id, 'track_failure_attempts', true );
+	if ( ! is_array( $attempts ) ) {
+		$attempts = array();
+	}
+
+	// Self-heal: seed from the legacy meta the first time we record for this order.
+	if ( empty( $attempts ) ) {
+		$legacy = get_pmpro_membership_order_meta( $order_id, 'last_failure_email_sent', true );
+		if ( ! empty( $legacy ) ) {
+			$attempts[] = array(
+				'timestamp'  => date( 'Y-m-d H:i:s', intval( $legacy ) ),
+				'email_sent' => true,
+			);
+		}
+	}
+
+	$attempts[] = array(
+		'timestamp'  => current_time( 'mysql' ),
+		'email_sent' => (bool) $email_sent,
+	);
+
+	update_pmpro_membership_order_meta( $order_id, 'track_failure_attempts', $attempts );
+
+	// Phase out the legacy meta — the new meta is the source of truth.
+	delete_pmpro_membership_order_meta( $order_id, 'last_failure_email_sent' );
+}
+
+/**
+ * Get the unix timestamp of the most recent failure email actually sent for an order.
+ *
+ * Reads from `track_failure_attempts` first; falls back to the legacy
+ * `last_failure_email_sent` meta for orders that haven't been touched since the upgrade.
+ *
+ * @since TBD
+ *
+ * @param int $order_id The order ID.
+ * @return int Unix timestamp of the last sent failure email, or 0 if none.
+ */
+function pmpro_get_last_failure_email_sent_timestamp( $order_id ) {
+	if ( empty( $order_id ) ) {
+		return 0;
+	}
+
+	$attempts = get_pmpro_membership_order_meta( $order_id, 'track_failure_attempts', true );
+	if ( is_array( $attempts ) ) {
+		for ( $i = count( $attempts ) - 1; $i >= 0; $i-- ) {
+			if ( ! empty( $attempts[ $i ]['email_sent'] ) && ! empty( $attempts[ $i ]['timestamp'] ) ) {
+				return (int) strtotime( $attempts[ $i ]['timestamp'] );
+			}
+		}
+	}
+
+	// Fallback for orders that pre-date track_failure_attempts and haven't been touched yet.
+	$legacy = get_pmpro_membership_order_meta( $order_id, 'last_failure_email_sent', true );
+	return empty( $legacy ) ? 0 : intval( $legacy );
 }
 		
 /**

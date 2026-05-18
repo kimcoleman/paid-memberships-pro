@@ -141,6 +141,8 @@ class PMPro_Email_Template_Billing_Failure_Admin extends PMPro_Email_Template {
 			'{{ accountnumber }}' => esc_html__( 'The last four digits of the credit card number.', 'paid-memberships-pro' ),
 			'{{ expirationmonth }}' => esc_html__( 'The expiration month of the credit card.', 'paid-memberships-pro' ),
 			'{{ expirationyear }}' => esc_html__( 'The expiration year of the credit card.', 'paid-memberships-pro' ),
+			'{{ failure_attempt_count }}' => esc_html__( 'The total number of failed payment attempts recorded against this order, including the one that triggered this email.', 'paid-memberships-pro' ),
+			'{{ failure_email_send_count }}' => esc_html__( 'The total number of failure emails sent for this order, including this one.', 'paid-memberships-pro' ),
 		);
 	}
 
@@ -155,6 +157,22 @@ class PMPro_Email_Template_Billing_Failure_Admin extends PMPro_Email_Template {
 		$order = $this->order;
 		$user = $this->user;
 		$membership_level = pmpro_getLevel( $order->membership_id );
+
+		// Count attempts and sends recorded so far. This email represents the next attempt
+		// (and a send), so add 1 to each count so templates see the current message included.
+		$attempts = ! empty( $order->id ) ? get_pmpro_membership_order_meta( $order->id, 'track_failure_attempts', true ) : array();
+		if ( ! is_array( $attempts ) ) {
+			$attempts = array();
+		}
+		$send_count = 0;
+		foreach ( $attempts as $entry ) {
+			if ( ! empty( $entry['email_sent'] ) ) {
+				$send_count++;
+			}
+		}
+		$failure_attempt_count = count( $attempts ) + 1;
+		$failure_email_send_count = $send_count + 1;
+
 		return array(
 			'subject' => $this->get_default_subject(),
 			'name' => $user->display_name,
@@ -183,6 +201,8 @@ class PMPro_Email_Template_Billing_Failure_Admin extends PMPro_Email_Template {
 			'accountnumber' => hideCardNumber( $order->accountnumber ),
 			'expirationmonth' => $order->expirationmonth,
 			'expirationyear' => $order->expirationyear,
+			'failure_attempt_count' => $failure_attempt_count,
+			'failure_email_send_count' => $failure_email_send_count,
 		);
 	}
 
