@@ -98,6 +98,32 @@
 				return false;
 			}
 
+			/**
+			 * Filter whether to send an email.
+			 *
+			 * @since TBD
+			 *
+			 * @param bool       $send  Whether to send the email. Default true.
+			 * @param PMProEmail $email The email being sent.
+			 */
+			$send = apply_filters( 'pmpro_send_email', true, $this );
+
+			if ( ! empty( $this->template ) ) {
+				/**
+				 * Filter whether to send an email with a specific template, e.g. pmpro_send_email_billing_failure.
+				 *
+				 * @since TBD
+				 *
+				 * @param bool       $send  Whether to send the email.
+				 * @param PMProEmail $email The email being sent.
+				 */
+				$send = apply_filters( 'pmpro_send_email_' . $this->template, $send, $this );
+			}
+
+			if ( ! $send ) {
+				return false;
+			}
+
 			//default values
 			global $current_user, $pmpro_email_templates_defaults;
 			if(!$this->email)
